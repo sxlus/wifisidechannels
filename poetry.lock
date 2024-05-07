@@ -335,6 +335,16 @@ unicode = ["unicodedata2 (>=15.1.0)"]
 woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 
 [[package]]
+name = "gmpy"
+version = "1.17"
+description = "GMP or MPIR interface to Python 2.4+ and 3.x"
+optional = false
+python-versions = "*"
+files = [
+    {file = "gmpy-1.17.zip", hash = "sha256:1a79118a5332b40aba6aa24b051ead3a31b9b3b9642288934da754515da8fa14"},
+]
+
+[[package]]
 name = "ipykernel"
 version = "6.29.4"
 description = "IPython Kernel for Jupyter"
@@ -1188,4 +1198,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "236c90a7ecdb1469a6a70933454dd1b0f6ec0e57a274b50c53fcd638b3bf15ba"
+content-hash = "adda7e3ba3221968550ca299424d65905bd7b0480825aa5f4cf6aeca9f22c1fb"

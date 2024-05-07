@@ -8,8 +8,7 @@ class Extractor:
     KEY: str
     def __init__(self, **kwargs):
         self.KEY = kwargs.get("KEY", "")
-
-    def apply(self, packet):#: models.Packet) -> dict: -> cyclic imports :)
+    def apply(self, packet: models.Packet) -> dict:
         """Perform extraction"""
         return {}
     def __str__(self):
@@ -22,7 +21,7 @@ class StringExtractor(Extractor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def __str__(self):
-        return super().__str__() + " - < String >"
+        return super().__str__() + f" - < String >"
 
 class RegexExtractor(StringExtractor):
     """
@@ -36,8 +35,8 @@ class RegexExtractor(StringExtractor):
         self.GROUP = kwargs.get("GROUP", 0)
     def __str__(self):
         return super().__str__() + f"[ REGEX ]: {str(self.REGEX)}"
-    
-    def apply(self, packet):#: models.Packet) -> dict:
+
+    def apply(self, packet: models.Packet) -> dict:
         found: dict[list] = {}
         data = packet.RAW if isinstance(packet.RAW, str) else packet.RAW.decode("utf-8") 
         if (match:= re.finditer(re.compile(self.REGEX), data)):
@@ -59,7 +58,7 @@ class ColumnExtractor(StringExtractor):
     def __str__(self):
         return super().__str__() + f"[ COMUMN ]: {str(self.COLUMN)} - DELIM: {str(self.DELIM)}"
 
-    def apply(self, packet):#: models.Packet) -> dict:
+    def apply(self, packet: models.Packet) -> dict:
         raw = [
             x.strip() for x in (packet.RAW.decode("utf-8").strip() \
                                 if isinstance(packet.RAW, bytes) \
@@ -71,12 +70,63 @@ class ColumnExtractor(StringExtractor):
                 self.KEY: []
             }
 
-class VHT_MIMO_CONTROL_Extractor(StringExtractor):
+class FieldExtractor(Extractor):
     """
-    Parse VHT_MIMO_CONTROL FIELD
+    Parse specific Fields
+    """
+    FIELD       :       models.WifiField = models.WifiField()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.FIELD = kwargs.get("FIELD", self.FIELD)
+
+    def __str__(self):
+        return super().__str__() + f" < Field >\n{str(self.FIELD)}"
+
+    def apply(self, packet: models.Packet) -> dict:
+        return {
+            self.KEY : packet.DATA.get(self.KEY, []) + [ self.FIELD.translate(packet.DATA.get(self.KEY)[x], base = 16) for x in range(len(packet.DATA.get(self.KEY, []))) ]
+        }
+
+class VHT_MIMO_CONTROL_Extractor(FieldExtractor):
+    """
+    EXTRACT VHT_MIMO_CONTROL_CONTROL
+    """
+    KEY         :       str                 = models.TsharkField.VHT_MIMO_CONTROL_CONTROL.value
+    FIELD       :       models.WifiField    = models.VHT_MIMO_CONTROL_CONTROL()
+
+    def __init__(self, **kwargs):
+        super().__init__(**(
+            kwargs | (
+                    {
+                        "FIELD" : kwargs.get("FIELD") if isinstance(kwargs.get("FIELD"), models.WifiField) else self.FIELD
+                    }
+                ) |
+                (
+                    {
+                        "KEY" : kwargs.get("KEY") if isinstance(kwargs.get("KEY"), str) else self.KEY
+                    }
+                )
+            )
+        )
+
+class VHT_BEAMFORMING_REPORT_Extractor(FieldExtractor):
+    """
+    EXTRACT VHT_COMPRESSED_BEAMFORMINGREPORT
     """
 
-class VHT_BEAMFORMING_REPORT_Extractor(StringExtractor):
-    """
-    Parse VHT_MIMO_CONTROL FIELD
-    """
+    KEY         :       str                 = models.TsharkField.VHT_COMPRESSED_BEAMFORMINGREPORT.value
+    FIELD       :       models.WifiField    = models.VHT_COMPRESSED_BEAMFORMINGREPORT()
+    def __init__(self, **kwargs):
+        super().__init__(**(
+            kwargs | (
+                    {
+                        "FIELD" : kwargs.get("FIELD") if isinstance(kwargs.get("FIELD"), models.WifiField) else self.FIELD
+                    }
+                ) |
+                (
+                    {
+                        "KEY" : kwargs.get("KEY") if isinstance(kwargs.get("KEY"), str) else self.KEY
+                    }
+                )
+            )
+        )

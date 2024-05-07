@@ -10,7 +10,7 @@ class PacketProcessor():
         Read string ( preparsed pcap ) from m_source, where m_values is '{"value_name": column_number}'
         TODO: Else pcap format is required @ m_source. Then m_value should contain valid scappy Filters. 
     """
-    m_name          : str                           = "PackProc"
+    m_name          : str                           = "[ PackProc ]"
     # IN
     m_todo          : list[models.Packet]           = []
     m_extractor     : list[extractor.Extractor]     = []
@@ -19,23 +19,12 @@ class PacketProcessor():
     # OUT
     m_data          : list[models.Packet]           = []
 
-
-    # INTERNAL currently unused
-    #m_source        : list[pathlib.Path]            = []
-    m_source_type   : type                          = str
-    m_source_fp     : typing.IO                     = None
-    
     def __init__(
             self,
             **kwargs
     ):
-        self.m_name     = self.m_name + str(kwargs.get("name")) if kwargs.get("name") else self.m_name
-        #self.m_source       = [
-        #        pathlib.Path(kwargs.get("source"))
-        #    ] if isinstance(kwargs.get("source"), str) else [
-        #        kwargs.get("source")
-        #    ]   if isinstance(kwargs.get("source"), pathlib.Path) else kwargs.get("source") \
-        #            if isinstance(kwargs.get("source"), list) else []
+        self.m_name     = self.m_name + "[ " + str(kwargs.get("name")) + " ]" if kwargs.get("name") else self.m_name
+
         self.m_extractor    = [
                 kwargs.get("extractor") 
             ] if isinstance(kwargs.get("extractor"), extractor.Extractor) else kwargs.get("extractor") \
@@ -45,6 +34,10 @@ class PacketProcessor():
             kwargs.get("data")
             ] if isinstance(kwargs.get("data"), models.Packet) else kwargs.get("data") \
                 if isinstance(kwargs.get("data"), list) else []
+        self.m_todo         = [ 
+            kwargs.get("todo")
+            ] if isinstance(kwargs.get("todo"), models.Packet) else kwargs.get("todo") \
+                if isinstance(kwargs.get("todo"), list) else []
 
     def __str__(self):
         s = f"PacketProcessor: {len(self.m_data)} Packets available.\n"
@@ -92,7 +85,6 @@ class PacketProcessor():
             inp: models.Packet,
             extract: list[extractor.Extractor] = None
     ) -> dict:
-
         if extract is None:
             extract = self.m_extractor
         out = {}
@@ -106,7 +98,6 @@ class PacketProcessor():
             b: dict
     ) -> dict:
         out = {}
-
         for k in [ x for x in a.keys() if x not in b.keys()]:
             out[k] = a[k]
         for k in [ x for x in a.keys() if x in b.keys()]:
@@ -130,12 +121,26 @@ class PacketProcessor():
         data: list[models.Packet] = []
         for pack in todo:
             pack.NAME = self.m_name if not pack.NAME else pack.NAME
-            pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack))
+            pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack, extract=extract))
             data.append(pack)
-        if todo == self.m_todo:
-            self.m_todo = []
 
         return self.save(data)
+
+    def parse(
+            self,
+            todo: models.Packet | list[models.Packet]                           = None,
+            extract: extractor.FieldExtractor | list[extractor.FieldExtractor]  = None,
+    ):
+        todo        = self.m_todo       if todo is None     else [ todo ]       if isinstance(todo, models.Packet)                  else todo
+        extract     = self.m_extractor  if extract is None  else [ extract ]    if isinstance(extract, extractor.FieldExtractor)    else extract
+        for ex in extract:
+            if not isinstance(ex, extractor.FieldExtractor):
+                print(f"{self.m_name}: Cant use extractor `{ex}` to parse field.")
+                return todo
+        for pac in todo:
+            for ex in extract:
+                pac.DATA |= ex.apply(pac)
+        return todo
 
     def save(
             self,

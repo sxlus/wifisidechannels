@@ -131,21 +131,15 @@ class WiFi():
         data = self.collect_stdout(procs=[proc],    timeout=timeout)
         error  = self.collect_stderr(procs=[proc],  timeout=timeout)
 
-        #for err in error:
-        #    print(err)
-        #for x in range(min(10, len(data))):
-        #    print(data[x])
+        for err in error:
+            print(err)
 
         packets = []
         for proc in processor:
             packets += proc.handle(raw=data)
 
-        # queue does not respond well to much data
-        #out = mp.Queue(len(packets))
-        for pack in packets:
-        #    out.put(pack, block=False, timeout=timeout)
-            print(str(pack))
-        #return out
+        # for pack in packets:
+        #     print(str(pack))
         return packets
 
     def process_capture(
@@ -200,7 +194,7 @@ class WiFi():
 
         proc = self.launch_process(function=self._read, kwargs=kwargs)
 
-        print(f"Procs after listen: {proc} - {self.m_procs}")
+        #print(f"Procs after read: {proc} - {self.m_procs}")
         self.procs_alive(procs=[proc])
 
         # here we can wait until the timeout ends the shell script and _listen teminates 
@@ -212,23 +206,14 @@ class WiFi():
 
         for err in error:
             print(err)
-        for x in range(min(10, len(data))):
-            print(data[x])
 
         packets = []
         for proc in processor:
             packets += proc.handle(raw=data)
 
-        # queue does not respond well to much data
-        #out = mp.Queue()
-        for pack in packets:
-        #    try:
-        #        out.put(pack, block=False, timeout=timeout)
-                print(str(pack))
-        #    except Exception as r:
-        #        print(out.full())
-        #        print(f"[WARN]: process_capture: Queue.put(): {r}")
-        #return out
+        #for pack in packets:
+        #    print(str(pack))
+
         return packets
 
     # lauches processes for tasks in the form of funtions
@@ -275,7 +260,7 @@ class WiFi():
             stderr = self.m_stderr
         cmd = shlex.split((f"timeout {timeout} " if timeout else "") + str(cmd))
 
-        print(f"Proc {os.getpid()} launching tasks" + (f" with timeout {timeout}" if timeout is not None else "") + f": {str(cmd)}")
+        #print(f"Proc {os.getpid()} launching tasks" + (f" with timeout {timeout}" if timeout is not None else "") + f": {str(cmd)}")
 
         with subprocess.Popen(
             args=cmd,

@@ -1,6 +1,6 @@
 # 802.11 Sidechannel implementations
 
-## Going for Transmitbeamforming first
+## Usage of the app so far
 
 ```bash
 usage: wifisidechannels.py [-h] [--interface [INTERFACE ...]] [--read [READ]] [--eavesdrop EAVESDROP] [--filter_fields [FILTER_FIELDS]] [--channel [CHANNEL]] [--frequency [FREQUENCY]] [--timeout [TIMEOUT]]
@@ -22,3 +22,5 @@ options:
   --timeout [TIMEOUT], -t [TIMEOUT]
                         Controls how long subprocesses are executed and timeout for queue access.
 ```
+
+## Look into bash/setup_device.sh

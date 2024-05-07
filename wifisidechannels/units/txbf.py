@@ -1,6 +1,9 @@
 import pathlib
 
 import wifisidechannels.units.wifi as wifi
+import wifisidechannels.models.models as models
+import wifisidechannels.components.packet_processor as packet_processor
+import wifisidechannels.components.extractor as extractor
 
 class TxBf(wifi.WiFi):
 
@@ -16,12 +19,36 @@ class TxBf(wifi.WiFi):
             **(kwargs | 
                 (
                     {
-                            "name": self.m_name
-                    } if not kwargs.get("name") else {}
+                            "name": self.m_name if not kwargs.get("name") else kwargs.get("name")
+                    }
                 )
             )
         )
 
+    def process_VHT_MIMO_CONTROL(
+            self,
+            packets: list[models.Packet]
+    ) -> list[models.Packet]:
+        extract     = extractor.VHT_MIMO_CONTROL_Extractor()
+        print(extract)
+        processor   = packet_processor.PacketProcessor(
+            name = extract.KEY,
+            extracttor = extract,
+            todo = packets
+        )
+        return processor.extract()
+
+    def process_VHT_COMPRESSED_BREAMFROMING_REPORT(
+            self,
+            packets: list[models.Packet]
+    ) -> list[models.Packet]:
+        extract     = extractor.VHT_MIMO_CONTROL_Extractor()
+        processor   = packet_processor.PacketProcessor(
+            name = extract.KEY,
+            extractor = extract,
+            todo = packets
+        )
+        return processor.parse()
 
     def classify(self):
         """

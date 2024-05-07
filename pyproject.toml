@@ -8,6 +8,7 @@ authors = ["sxlus <sxlus@protonmail.com>"]
 python = "^3.10"
 matplotlib = "^3.8.4"
 scapy = "^2.5.0"
+gmpy = "^1.17"
 
 [tool.poetry.dev-dependencies]
 
