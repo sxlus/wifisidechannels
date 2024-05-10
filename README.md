@@ -23,4 +23,20 @@ options:
                         Controls how long subprocesses are executed and timeout for queue access.
 ```
 
+### some functions that are currently being tested can be executed with `--test` flag
+
+____
+
 ## Look into bash/setup_device.sh
+
+- some hints about tsgark interface
+- could be replaced at least partially by pyshark
+
+## Status Log
+
+- **10.05.24**
+  - used `WiPiCap` for calculation of V
+  - adjusted the interface and signature
+  - extracted and calculated all required data
+  - need for way to capture targeted with storage system to aquire live data
+  - use UDP trafic from axiliary client to target to increase CBR rate

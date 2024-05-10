@@ -49,7 +49,7 @@ class WiFi():
         # ???? data again
         self.m_data     = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else {}
 
-        self.m_set_up   = pathlib.Path(os.path.join("'" + os.getcwd(), "bash/setup_device.sh'")) if \
+        self.m_set_up   = pathlib.Path(os.path.join("'" + os.getcwd(), "../bash/setup_device.sh'")) if \
                            not kwargs.get("set_up", "") else kwargs.get("set_up", "")
 
     def eavesdrop(
@@ -260,7 +260,7 @@ class WiFi():
             stderr = self.m_stderr
         cmd = shlex.split((f"timeout {timeout} " if timeout else "") + str(cmd))
 
-        #print(f"Proc {os.getpid()} launching tasks" + (f" with timeout {timeout}" if timeout is not None else "") + f": {str(cmd)}")
+        print(f"Proc {os.getpid()} launching tasks" + (f" with timeout {timeout}" if timeout is not None else "") + f": {str(cmd)}")
 
         with subprocess.Popen(
             args=cmd,

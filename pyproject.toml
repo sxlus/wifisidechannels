@@ -9,6 +9,10 @@ python = "^3.10"
 matplotlib = "^3.8.4"
 scapy = "^2.5.0"
 gmpy = "^1.17"
+cython = "^3.0.10"
+pyshark = "^0.6"
+loguru = "^0.7.2"
+tqdm = "^4.66.4"
 
 [tool.poetry.dev-dependencies]
 

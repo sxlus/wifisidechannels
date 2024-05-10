@@ -25,26 +25,32 @@ class TsharkDisplayFilter(enum.Enum):
 
     # TXBF STUFF
     VHT_NDP_ANNOUNCE:str            = "\"(wlan.fc.type==0 && wlan.fc.subtype==5) || (wlan.fc.type_subtype==21)\""
-    VHT_NDP_ANNOUNCE_I:str          = "\"(wlan.fc.type_subtype == 0x15)\""
-    VHT_ACTION_NO_ACK:str           = "\"(wlan.fc.type_subtype == 0x0e)\""
+    VHT_NDP_ANNOUNCE_I:str          = "(wlan.fc.type_subtype == 0x15)"
+    VHT_ACTION_NO_ACK:str           = "(wlan.fc.type_subtype == 0x0e)"
     BEAMFORMING_REPORT_POLL:str     = "\"(wlan.fc.type==1 && wlan.fc.subtype==4) || wlan.fc.type_subtype==20\""
 
     # GENERAL
-    MAC_RA: str                     = f"\"(wlan.ra == {placeholder})\""
-    MAC_TA: str                     = f"\"(wlan.ta == {placeholder})\""
-    MAC_SA: str                     = f"\"(wlan.sa == {placeholder})\""
-    MAC_DA: str                     = f"\"(wlan.da == {placeholder})\""
+    MAC_RA: str                     = f"(wlan.ra == {placeholder})"
+    MAC_TA: str                     = f"(wlan.ta == {placeholder})"
+    MAC_SA: str                     = f"(wlan.sa == {placeholder})"
+    MAC_DA: str                     = f"(wlan.da == {placeholder})"
 
 class TsharkField(enum.Enum):
 
-    FRAME_TIME:str                          = "frame.time"
+    FRAME_TIME:str                          = "frame.time_epoch"
     MAC_RA:str                              = "wlan.ra"
     MAC_TA:str                              = "wlan.ta"
     MAC_SA:str                              = "wlan.sa"
     MAC_DA:str                              = "wlan.da"
     VHT_MIMO_CONTROL_CONTROL:str            = "wlan.vht.mimo_control.control"
-    VHT_COMPRESSED_BEAMFORMINGREPORT:str   = "wlan.vht.compressed_beamforming_report"
+    VHT_CBR:str   = "wlan.vht.compressed_beamforming_report"
 
+class ExtractorField(enum.Enum):
+    VHT_MIMO_CONTROL                        = "mimo_control"
+    VHT_STEERING_MATRIX                     = "V"
+    VHT_CBR_PARSED                          = "cbr_parsed"
+
+# this shall get simplified to function from wipicap or simplpy replaced
 class VHT_MIMO_CONTROL_NA(enum.Enum):
     """
     Access with str(Nr) + str(Nc)
@@ -72,27 +78,47 @@ class VHT_MIMO_CONTROL_NA(enum.Enum):
         "66" : 30
     }
 
+# this shall get simplified to function from wipicap or simplpy replaced
 class VHT_MIMO_CONTROL_OA(enum.Enum):
     """
-    Access with str(Nr) + str(Nc)
+    Access with Nr, Nc from MIMO_CONTROL
     """
-    VAL = {
-        "21" : ["psi11", "phi21"],
-        "22" : ["psi11", "phi21"],
-        "31" : ["psi11", "psi21", "phi21", "phi31"],
-        "32" : ["psi11", "psi21", "phi21", "phi31", "psi22", "phi32"],
-        "33" : ["psi11", "psi21", "phi21", "phi31", "psi22", "phi32"],
-        "41" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41"],
-        "42" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42"],
-        "43" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42", "psi33", "phi43"],
-        "44" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42", "psi33", "phi43"],
-        "51" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51"],
-        "52" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52"],
-        "53" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53"],
-        "54" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53", "psi44", "phi54"],
-        "55" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53", "psi44", "phi54"],
-    }
+    def VAL(nr, nc):
+        angle_bits_order_len = min([nc, nr - 1]) * (2 * (nr - 1) - min(nc, nr - 1) + 1)
+        cnt = nr - 1
+        angle_type = []
+        phi_indices = [0, 0]
+        psi_indices = [1, 0]
+        while len(angle_type) < angle_bits_order_len:
+            for i in range(cnt):
+                angle_type.append(f"phi{phi_indices[0] + i}{phi_indices[1]}")
+            phi_indices[0] += 1
+            phi_indices[1] += 1
+            for i in range(cnt):
+                angle_type.append(f"psi{psi_indices[0] + i}{psi_indices[1]}")
+            psi_indices[0] += 1
+            psi_indices[1] += 1
+            cnt -= 1
+        return angle_type
 
+    #VAL = {
+    #    "21" : ["psi11", "phi21"],
+    #    "22" : ["psi11", "phi21"],
+    #    "31" : ["psi11", "psi21", "phi21", "phi31"],
+    #    "32" : ["psi11", "psi21", "phi21", "phi31", "psi22", "phi32"],
+    #    "33" : ["psi11", "psi21", "phi21", "phi31", "psi22", "phi32"],
+    #    "41" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41"],
+    #    "42" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42"],
+    #    "43" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42", "psi33", "phi43"],
+    #    "44" : ["psi11", "psi21", "psi31", "phi21", "phi31", "phi41", "psi22", "psi32", "phi32", "phi42", "psi33", "phi43"],
+    #    "51" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51"],
+    #    "52" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52"],
+    #    "53" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53"],
+    #    "54" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53", "psi44", "phi54"],
+    #    "55" : ["psi11", "psi21", "psi31", "psi41", "phi21", "phi31", "phi41", "phi51", "psi22", "psi32", "psi42", "phi32", "phi42", "phi52", "psi33", "psi43", "phi43", "phi53", "psi44", "phi54"],
+    #}
+
+# ok
 class VHT_MIMO_CONTROL_NS(enum.Enum):
     """
     Access with str(channel_width) + str(grouping)
@@ -111,7 +137,12 @@ class VHT_MIMO_CONTROL_NS(enum.Enum):
 
 class WifiField():
     """
-    Used to specify FIELD for FieldExtractors
+    Used to specify FIELD for FieldExtractors.
+    It includes bitmasks and a way to interpret data masked.
+    `translate` should be called by the corresponding extractor to apply.
+    `create` can be used in init to create fields dynamically dependent on data in packet or to create VALUE and TRANSLATE 
+    @VALUE: dict of names as keys for bitmasks
+    @TRANSLATE: dict of same names as keys for interpretation callable
     """
     VALUE       : dict[str : int]
     TRANSLATE   : dict[str : typing.Callable]
@@ -122,7 +153,10 @@ class WifiField():
 
     def __str__(self):
         return "[ WifiField ]"
-    
+
+    def create(self, packet: Packet) -> list[dict[str : int], dict[str : typing.Callable]]:
+        return self.VALUE, self.TRANSLATE
+
     def translate(self, data: str | bytes, base: int = 16) -> dict:
         if not ( isinstance(data, str) or isinstance(data, bytes) ):
             #print(f"[ERROR][ wififield ]: translate - data type incorrect. {str(data)}")
@@ -141,7 +175,7 @@ class VHT_MIMO_CONTROL_CONTROL(WifiField):
         "Nr"                        : int("111"+3*"0"       , 2),       # how many rows
         "channel_width"             : int("11"+6*"0"        , 2),       # channel_width -> #subcarrier
         "grouping"                  : int("11"+8*"0"        , 2),       # grouping      -> #subcarrier
-        "codebook"                  : int("1"+10*"0"         , 2),       # quantizising steps for phi, psi
+        "codebook"                  : int("1"+10*"0"         , 2),      # quantizising steps for phi, psi
         "feedback_type"             : int("1"+11*"0"        , 2),       # `SU` or `MU`
         "remaining_fedback_segments": int("111"+12*"0"      , 2),
         "first_fedback_segment"     : int("1"+15*"0"        , 2),
@@ -185,11 +219,17 @@ class VHT_MIMO_CONTROL_CONTROL(WifiField):
         parsed = super().translate(data=data, base=base)
         return parsed | {
             "Ns" : VHT_MIMO_CONTROL_NS.VAL.value.get((targ := (str(parsed.get("channel_width", "")) + str(parsed.get("grouping", "")))), f"{targ} not in Mapping"),
-            "Na" : VHT_MIMO_CONTROL_NA.VAL.value.get((targ := (str(parsed.get("Nr", "")) + str(parsed.get("Nc", "")))), f"{targ} not in Mapping"),
-            "OA" : VHT_MIMO_CONTROL_OA.VAL.value.get((targ := (str(parsed.get("Nr", "")) + str(parsed.get("Nc", "")))), f"{targ} not in Mapping"),
+            #"Na" : VHT_MIMO_CONTROL_NA.VAL.value.get((targ := (str(parsed.get("Nr", "")) + str(parsed.get("Nc", "")))), f"{targ} not in Mapping"),
+            "OA" : VHT_MIMO_CONTROL_OA.VAL(parsed.get("Nr", 0), parsed.get("Nc", 0)),
         }
 
-class VHT_COMPRESSED_BEAMFORMINGREPORT(WifiField):
+
+# this works somewhat. its dead while dev bc found WiPicap that does this in cython
+# could rework this code with info from wipicap
+# but rather use modified version of wipicap as its known to work and its fast
+# its not a complete loss one could check if there is a difference when working with q. angles instead of matrices V
+
+class VHT_CBR(WifiField):
 
     VALUE       : dict[str:dict] = {}
     TRANSLATE   : dict[str:dict] = {}
@@ -212,12 +252,13 @@ class VHT_COMPRESSED_BEAMFORMINGREPORT(WifiField):
         )
 
     def create(self, packet: Packet):
+
         value       = {}
         translate   = {}
-        mimo_control = [ x for x in packet.DATA.get(TsharkField.VHT_MIMO_CONTROL_CONTROL.value, {}) if isinstance(x, dict) ]
+        mimo_control = val if isinstance((val:= packet.DATA.get(ExtractorField.VHT_MIMO_CONTROL.value, {})), dict) else None
         if not mimo_control:
             return value, translate
-        mimo_control = mimo_control[0]
+
         bphi = mimo_control.get("codebook", {}).get("phi", 0)
         bpsi = mimo_control.get("codebook", {}).get("psi", 0)
         angle_order =  mimo_control.get("OA", [])[::-1]
@@ -235,11 +276,11 @@ class VHT_COMPRESSED_BEAMFORMINGREPORT(WifiField):
                 #print(translate[sub][angle](value[sub][angle]))
                 shift += bit
         value["SNR"]       = int("1"*8+"0"*shift, 2)
-        translate["SNR"]   = lambda x, s=shift: x>>s
+        translate["SNR"]   = lambda x, s=shift: (((x>>s) ^ 0xff) + 0x1) * 0.25 - 10 # prob no good
         return value, translate
 
     def __str__(self):
-        return super().__str__() + "[ VHT_COMPRESSED_BEAMFORMINGREPORT ]:" + \
+        return super().__str__() + "[ VHT_CBR ]:" + \
             ("\n\t[-] " + "\n\t[-] ".join([f"{str(x): <30} : {str(self.VALUE[x]): >30}" for x in self.VALUE.keys()]))
     
     def translate(self, data: str | bytes, base: int = 16) -> dict:

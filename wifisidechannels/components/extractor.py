@@ -47,7 +47,7 @@ class RegexExtractor(StringExtractor):
 
 class ColumnExtractor(StringExtractor):
     """
-    Extract from string packets delivered by tshark by columns
+    Extract from string packets delivered by tshark by columns.
     """
     COLUMN: int
     DELIM:  str
@@ -65,33 +65,36 @@ class ColumnExtractor(StringExtractor):
                                     else str(packet.RAW.strip())).split(self.DELIM)
         ]
         return {
-                self.KEY: [ raw[self.COLUMN] ]
+                self.KEY: raw[self.COLUMN]
             } if len(raw) > self.COLUMN else {
-                self.KEY: []
+                self.KEY: ""
             }
 
 class FieldExtractor(Extractor):
     """
-    Parse specific Fields
+    Parse specific Fields of 802.11.
     """
+    FROM        :       str
     FIELD       :       models.WifiField = models.WifiField()
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.FIELD = kwargs.get("FIELD", self.FIELD)
+        self.FROM = kwargs.get("FROM", self.FROM)
 
     def __str__(self):
         return super().__str__() + f" < Field >\n{str(self.FIELD)}"
 
     def apply(self, packet: models.Packet) -> dict:
         return {
-            self.KEY : packet.DATA.get(self.KEY, []) + [ self.FIELD.translate(packet.DATA.get(self.KEY)[x], base = 16) for x in range(len(packet.DATA.get(self.KEY, []))) ]
-        }
+            self.KEY : self.FIELD.translate(val, base = 16)
+        } if (val := packet.DATA.get(self.FROM)) else {}
 
 class VHT_MIMO_CONTROL_Extractor(FieldExtractor):
     """
-    EXTRACT VHT_MIMO_CONTROL_CONTROL
+    EXTRACT VHT_MIMO_CONTROL_CONTROL.
     """
-    KEY         :       str                 = models.TsharkField.VHT_MIMO_CONTROL_CONTROL.value
+    FROM        :       str                 = models.TsharkField.VHT_MIMO_CONTROL_CONTROL.value
+    KEY         :       str                 = models.ExtractorField.VHT_MIMO_CONTROL.value
     FIELD       :       models.WifiField    = models.VHT_MIMO_CONTROL_CONTROL()
 
     def __init__(self, **kwargs):
@@ -111,11 +114,11 @@ class VHT_MIMO_CONTROL_Extractor(FieldExtractor):
 
 class VHT_BEAMFORMING_REPORT_Extractor(FieldExtractor):
     """
-    EXTRACT VHT_COMPRESSED_BEAMFORMINGREPORT
+    EXTRACT VHT_CBR.
     """
-
-    KEY         :       str                 = models.TsharkField.VHT_COMPRESSED_BEAMFORMINGREPORT.value
-    FIELD       :       models.WifiField    = models.VHT_COMPRESSED_BEAMFORMINGREPORT()
+    FROM        :       str                 = models.TsharkField.VHT_CBR.value
+    KEY         :       str                 = models.ExtractorField.VHT_CBR_PARSED.value
+    FIELD       :       models.WifiField    = models.VHT_CBR()
     def __init__(self, **kwargs):
         super().__init__(**(
             kwargs | (

@@ -2,6 +2,7 @@ import wifisidechannels.units as units
 import wifisidechannels.components.packet_processor as packet_processor
 import wifisidechannels.components.extractor as extractor
 import wifisidechannels.models.models as models
+import wifisidechannels.tests as tests
 
 import argparse, os
 
@@ -66,41 +67,13 @@ parser.add_argument(
     action="store_true",
     help="Test Stuff.")
 
+
 def main():
     args = parser.parse_args()
+
     if args.test:
-        TX = units.txbf.TxBf()
-        pac = TX.process_capture(kwargs={
-            "read_file" : os.path.join("DUMP", "0txbf.pcapng")
-        })
-
-        ext_c = extractor.VHT_MIMO_CONTROL_Extractor()
-        processor   = packet_processor.PacketProcessor()
-        new_pac = processor.parse(todo=pac, extract=ext_c)
-
-        field = models.VHT_COMPRESSED_BEAMFORMINGREPORT(**{
-                    "packet" : new_pac[22]
-                }
-        )
-        ext_r = extractor.VHT_BEAMFORMING_REPORT_Extractor(**(
-            {
-                "FIELD" : field
-            }
-        ))
-
-        for p in new_pac:
-            #print(str(pac.DATA.get(models.TsharkField.VHT_MIMO_CONTROL_CONTROL.value)))
-            #print(str(pac.DATA.get(models.TsharkField.VHT_COMPRESSED_BEAMFORMINGREPORT.value)))
-            #print(field)
-            processor.parse(todo=p, extract=ext_r)
-        #dic = ext_r.apply(pac)
-        #for x in dic.keys():
-        #    print(str(dic[x]))
-
-        #print(new_pac[0].DATA.get(models.TsharkField.VHT_COMPRESSED_BEAMFORMINGREPORT.value))
-
-        for p in new_pac:
-            print(str(p.DATA))
+        test_V_extract(v=True)
+        return
 
     WFI = units.wifi.WiFi(**(
             {
@@ -163,5 +136,9 @@ if __name__ == '__main__':
     TODO: parser via cli
     TODO: create parser from tshark filter fields
     TODO: filter_fields should be splitted args via cli
+    TODO: record via cli for time with storage possebility
+    TODO: live capture + extraction test
+    TODO: get live data
+    TODO: use other client sending UDPs trough AP to generate trafic
     """
     main()

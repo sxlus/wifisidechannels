@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import typing
 
 class Plotter():
@@ -47,14 +47,14 @@ class Plotter():
         
         if not isinstance(data[0], list):
             domain      = np.arange(start=0, stop=len(data))
-            codomain    = np.ndarray(data)
+            codomain    = np.array(data)
         else:
             sorted_data = sorted(data, key = lambda x: x[0])
-            domain = np.ndarray([x[0] for x in sorted_data])
-            codomain = np.ndarray([x[1] for x in sorted_data])
+            domain = np.array([x[0] for x in sorted_data])
+            codomain = np.array([x[1] for x in sorted_data])
         
         plt.rcParams["figure.figsize"] = size
-        plt.title(f"Plotting function: {msg}")
+        plt.title(f"Plotting: {msg}")
         plt.xlim([ np.min(domain)   , np.max(domain) ])
         plt.ylim([ np.min(codomain) , np.max(codomain) ])
 

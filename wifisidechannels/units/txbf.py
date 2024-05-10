@@ -1,9 +1,10 @@
-import pathlib
+import numpy as np
 
 import wifisidechannels.units.wifi as wifi
 import wifisidechannels.models.models as models
 import wifisidechannels.components.packet_processor as packet_processor
 import wifisidechannels.components.extractor as extractor
+import wifisidechannels.components.WiPiCap.wipicap as wipicap
 
 class TxBf(wifi.WiFi):
 
@@ -30,25 +31,51 @@ class TxBf(wifi.WiFi):
             packets: list[models.Packet]
     ) -> list[models.Packet]:
         extract     = extractor.VHT_MIMO_CONTROL_Extractor()
-        print(extract)
         processor   = packet_processor.PacketProcessor(
             name = extract.KEY,
             extracttor = extract,
             todo = packets
         )
-        return processor.extract()
+        return processor.parse()
 
     def process_VHT_COMPRESSED_BREAMFROMING_REPORT(
             self,
-            packets: list[models.Packet]
-    ) -> list[models.Packet]:
-        extract     = extractor.VHT_MIMO_CONTROL_Extractor()
-        processor   = packet_processor.PacketProcessor(
-            name = extract.KEY,
-            extractor = extract,
-            todo = packets
-        )
-        return processor.parse()
+            packets: list[models.Packet],
+            check=True
+    ) -> list[models.Packet, list, list]:
+
+        """
+        The cython function used need uniform sized packets with respect to CBR
+        SO: Nc, Nr, Ns, channel_width, grouping of all packets to `get_v_matrix` should be the same.
+        In order to make use of `get_v_matrix` one should provide `mimo_control` dict in packet.DATA.
+        This can be done using process_VHT_MIMO_CONTROL
+        @PARAM:     check: False -> exspects packets to be uniform and in posession of `mimo_control` data. if not silent skip.
+                    check: True  -> batches uniform packets with respect to CBR size and generates if necessary mimo_control. ( convenient, but slower )
+        """
+
+        if check:
+            out_v = []
+            out_t = []
+            ## setup MIMO_CONTROL_EXTRACTOR
+            extract_MIMO_CONTROL = extractor.VHT_MIMO_CONTROL_Extractor()
+
+            # grouping is not precise
+            groups = {}
+            for packet in packets:
+                if not (cbr := packet.DATA.get(models.TsharkField.VHT_CBR.value)):
+                    continue
+                if not (l_cbr:=len(cbr)) in groups.keys():
+                    groups[l_cbr] = []
+                groups[l_cbr].append(packet)
+                if not packet.DATA.get(models.ExtractorField.VHT_MIMO_CONTROL.value):
+                    packet.DATA |= extract_MIMO_CONTROL.apply(packet)
+            for size in groups.keys():
+                v, t = wipicap.get_v_matrix(packets=groups[size])
+                out_v.append(v)
+                out_t.append(t)
+            return packets, out_v, out_t
+
+        return packets, wipicap.get_v_matrix(packets)
 
     def classify(self):
         """
