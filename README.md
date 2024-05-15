@@ -25,6 +25,12 @@ options:
 
 ### some functions that are currently being tested can be executed with `--test` flag
 
+### How to setup? - compile cython & maybe move `wipicap*`.so to `components/wipicap`
+
+```bash
+python components/wipicap/setup.py build_ext --inplace
+```
+
 ____
 
 ## Look into bash/setup_device.sh
@@ -40,3 +46,7 @@ ____
   - extracted and calculated all required data
   - need for way to capture targeted with storage system to aquire live data
   - use UDP trafic from axiliary client to target to increase CBR rate
+  - find a way to compile pyx code in a manny that is useable
+
+- **11.05.24**
+  - 

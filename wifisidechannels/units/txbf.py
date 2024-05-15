@@ -4,7 +4,7 @@ import wifisidechannels.units.wifi as wifi
 import wifisidechannels.models.models as models
 import wifisidechannels.components.packet_processor as packet_processor
 import wifisidechannels.components.extractor as extractor
-import wifisidechannels.components.WiPiCap.wipicap as wipicap
+import wifisidechannels.components.wipicap.wipicap as wipicap
 
 class TxBf(wifi.WiFi):
 

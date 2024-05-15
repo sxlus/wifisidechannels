@@ -87,7 +87,7 @@ class FieldExtractor(Extractor):
     def apply(self, packet: models.Packet) -> dict:
         return {
             self.KEY : self.FIELD.translate(val, base = 16)
-        } if (val := packet.DATA.get(self.FROM)) else {}
+        } if (val := packet.DATA.get(self.FROM, None)) else {}
 
 class VHT_MIMO_CONTROL_Extractor(FieldExtractor):
     """

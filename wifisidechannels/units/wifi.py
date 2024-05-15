@@ -49,7 +49,7 @@ class WiFi():
         # ???? data again
         self.m_data     = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else {}
 
-        self.m_set_up   = pathlib.Path(os.path.join("'" + os.getcwd(), "../bash/setup_device.sh'")) if \
+        self.m_set_up   = pathlib.Path(os.path.join("bash/setup_device.sh")) if \
                            not kwargs.get("set_up", "") else kwargs.get("set_up", "")
 
     def eavesdrop(
@@ -71,6 +71,7 @@ class WiFi():
                 filter_fields   : str = pass string that instructs to apply filter and display certain fields on call to _listen
                 frequency       : int = freq to set NIC to before listening
                 channel         : int = channel to set NIC to before listening
+                write_file      : str = path to store to pcapng
 
         NOTES:
         From here one could further mangle data filtered/selected by tshark display_filters 
@@ -85,8 +86,8 @@ class WiFi():
             kwargs |= (
                 {
                     "add": str(config)
-                } if not (val:= kwargs.pop("filter_fields", "")) else {
-                    "add": val
+                } if not ((filter_fields := kwargs.pop("filter_fields", "") or (write_file:= kwargs.pop("write_file", "")))) else {
+                    "add": (str(filter_fields) + " " if filter_fields else "") + ( "-w " + str(write_file) if write_file else "")
                 }
             )
             processor = packet_processor.PacketProcessor(
@@ -96,9 +97,10 @@ class WiFi():
         else:
             kwargs |= (
                 {
-                    "add": val
-                } if (val:= kwargs.pop("filter_fields")) else {}
+                    "add": (str(filter_fields) + " " if filter_fields else "") + ( "-w " + str(write_file) if write_file else "")
+                } if ((filter_fields := kwargs.pop("filter_fields", "") or (write_file:= kwargs.pop("write_file", "")))) else {}
             )
+
         if isinstance(processor, packet_processor.PacketProcessor):
             processor = [ processor ]
 
@@ -122,6 +124,7 @@ class WiFi():
         proc = self.launch_process(function=self._listen, kwargs=kwargs)
 
         print(f"Procs after listen: {proc} - {self.m_procs}")
+        time.sleep(1)
         self.procs_alive(procs=[proc])
 
         # here we can wait until the timeout ends the shell script and _listen teminates 
@@ -269,7 +272,7 @@ class WiFi():
             stderr=subprocess.PIPE) as proc:
             if stdout:
                 for line in proc.stdout:
-                    #print(line)
+                    #rint(line)
                     stdout.put(line)
             if stderr:
                 for line in proc.stderr:
@@ -287,7 +290,7 @@ class WiFi():
             dry: bool       = False,
             add: str     = ""
     ) -> None | str:
-        cmd = f"{self.m_set_up} -n {self.m_interface} -l" + ((" " + str(add)) if add else "")
+        cmd = f"\"{self.m_set_up}\" -n {self.m_interface} -l" + ((" " + str(add)) if add else "")
         if not dry:
             self._exec(cmd=cmd,
                     stdin=stdin, 

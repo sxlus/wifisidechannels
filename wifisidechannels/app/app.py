@@ -2,9 +2,9 @@ import wifisidechannels.units as units
 import wifisidechannels.components.packet_processor as packet_processor
 import wifisidechannels.components.extractor as extractor
 import wifisidechannels.models.models as models
-import wifisidechannels.tests as tests
+import wifisidechannels.tests.test as test
 
-import argparse, os
+import argparse, os, datetime
 
 parser = argparse.ArgumentParser(
                     prog='wifisidechannels.py')
@@ -24,6 +24,13 @@ parser.add_argument(
     nargs="?",
     help="Files to read from. (current just one)")
 parser.add_argument(
+    "--write",
+    "-w",
+    default=None, #os.path.join(os.getcwd(), "DUMP", f'capture_{datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}.pcapng'),
+    required=False,
+    nargs="?",
+    help="File to write to if listening.")
+parser.add_argument(
     "--eavesdrop",
     "-E",
     required=False,
@@ -35,6 +42,7 @@ parser.add_argument(
     required=False,
     nargs="?",
     help="String that instructs tshark to apply filter and display certain fields on call to _listen\n")
+
 parser.add_argument(
     "--channel",
     "-c",
@@ -66,18 +74,37 @@ parser.add_argument(
     required=False,
     action="store_true",
     help="Test Stuff.")
-
+parser.add_argument(
+    "--mac",
+    "-M",
+    required=False,
+    action="store_true",
+    help="Test Stuff.")
+parser.add_argument(
+    "--verbose",
+    "-v",
+    required=False,
+    nargs="?",
+    help="MAC to filter for ( currently only supported with --test )")
 
 def main():
     args = parser.parse_args()
 
     if args.test:
-        test_V_extract(v=True)
+        pac = test.TestStuff.test_qunatized_CBR_extract(
+            v = args.verbose if args.verbose else False)
+        pac = test.TestStuff.test_V_extract(
+            file = args.read if args.read else "../DUMP/0txbf.pcapng",
+            v = args.verbose if args.verbose else False
+        )
+        test.TestStuff.test_V_plot(packets=pac)
         return
+
+    print(os.getcwd())
 
     WFI = units.wifi.WiFi(**(
             {
-                "interface"   : "wlan0" if not args.interface else args.interface,
+                "interface"   : "wlan0" if not args.interface else args.interface[0],
             } |
             (
                 {
@@ -96,7 +123,8 @@ def main():
             )
         )
     )
-
+    print(WFI.m_interface)
+    print(args.interface)
     if args.eavesdrop:
         WFI.eavesdrop(**(
                 (
@@ -120,6 +148,11 @@ def main():
                             {
                                 "frequency" : args.frequency
                             } if args.frequency else {}
+                        ) |
+                        (
+                            {
+                                "write_file" : args.write
+                            } if args.write else {}
                         )
                     }
                 )

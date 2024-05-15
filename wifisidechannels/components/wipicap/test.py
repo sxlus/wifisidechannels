@@ -1,4 +1,4 @@
-from wifisidechannels.components.WiPiCap import wipicap
+from wifisidechannels.components.wipicap import wipicap
 from wifisidechannels.units.wifi import WiFi
 from wifisidechannels.components.extractor import VHT_MIMO_CONTROL_Extractor
 from wifisidechannels.models import models
