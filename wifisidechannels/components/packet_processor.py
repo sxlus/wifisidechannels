@@ -1,4 +1,4 @@
-import pathlib, typing, datetime
+import pathlib, typing, datetime, tqdm
 
 import wifisidechannels.models.models as models
 import wifisidechannels.components.extractor as extractor
@@ -119,7 +119,12 @@ class PacketProcessor():
         todo        = self.m_todo       if todo is None     else [ todo ]       if isinstance(todo, models.Packet)          else todo
         extract     = self.m_extractor  if extract is None  else [ extract ]    if isinstance(extract, extractor.Extractor) else extract
         data: list[models.Packet] = []
-        for pack in todo:
+        print(f"{self.m_name}[ INFO ] - extracting {len(todo)} Packets.")
+        print(f"{self.m_name}[ INFO ] - using {len(extract)} Extractor.")
+        for ex in extract:
+            print("\t" + f"{str(ex)}")
+
+        for pack in tqdm.tqdm(todo):
             pack.NAME = self.m_name if not pack.NAME else pack.NAME
             pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack, extract=extract))
             data.append(pack)
@@ -154,5 +159,5 @@ class PacketProcessor():
             self.m_data = self.m_data[low:] + data
         else:
             self.m_data += data
-        print(f"{self.m_name}[ INFO ]: Currently holding {len(self.m_data)} samples.")
+        # print(f"{self.m_name}[ INFO ]: Currently holding {len(self.m_data)} samples.")
         return data

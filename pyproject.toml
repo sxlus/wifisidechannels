@@ -13,6 +13,7 @@ cython = "^3.0.10"
 pyshark = "^0.6"
 loguru = "^0.7.2"
 tqdm = "^4.66.4"
+joblib = "^1.4.2"
 
 [tool.poetry.dev-dependencies]
 

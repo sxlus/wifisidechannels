@@ -79,26 +79,51 @@ class WiFi():
         for TxBf this will be the respective class. 
         """
 
+        print(
+            f"[*] {self.m_name} - Capturing on: {self.m_interface}" + \
+            (f" @freq:{str(freq)}" if (freq:= kwargs.get("frequency", None)) else "") + \
+            (f" @channel:{str(chan)}" if (chan:= kwargs.get("channel", None)) else "") + \
+            (f" for {str(sec)} seconds." if (sec:= kwargs.get("timeout", None)) else "")
+        )
+
         if processor is None:
             processor = self.m_processor
+        write_file      = kwargs.pop("write_file", "")
+        filter_fields   = kwargs.pop("filter_fields", "")
+        preset = None
+
+        if write_file:
+            print(f"\t[*] Writing to {write_file}.")
+    
         if not processor:
-            config = presets.TSHARK_FIELDS_VHT
+            preset = presets.TSHARK_FIELDS_VHT
+            if (mac_sa:= kwargs.pop("mac_sa", None)) and isinstance(mac_sa, str):
+                preset.add_filter(models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
+            if (mac_da:= kwargs.pop("mac_da", None))and  isinstance(mac_da, str):
+                preset.add_filter(models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
+
+            print(f"\t[*] Using preset: {str(preset)}.")
+
             kwargs |= (
                 {
-                    "add": str(config)
-                } if not ((filter_fields := kwargs.pop("filter_fields", "") or (write_file:= kwargs.pop("write_file", "")))) else {
-                    "add": (str(filter_fields) + " " if filter_fields else "") + ( "-w " + str(write_file) if write_file else "")
+                    "add": " -w " + str(write_file)
+                } if not filter_fields and write_file else {
+                    "add": str(filter_fields) + " "
+                } if filter_fields else {
+                    "add" : str(preset)
                 }
             )
             processor = packet_processor.PacketProcessor(
-                name=config.NAME,
-                extractor=config.extractor()
+                name=preset.NAME,
+                extractor=preset.extractor()
             )
         else:
             kwargs |= (
                 {
-                    "add": (str(filter_fields) + " " if filter_fields else "") + ( "-w " + str(write_file) if write_file else "")
-                } if ((filter_fields := kwargs.pop("filter_fields", "") or (write_file:= kwargs.pop("write_file", "")))) else {}
+                    "add": " -w " + str(write_file)
+                } if not filter_fields and write_file else {
+                    "add": str(filter_fields) + " "
+                }
             )
 
         if isinstance(processor, packet_processor.PacketProcessor):
@@ -121,11 +146,18 @@ class WiFi():
             })
             self.launch_process(function=self._set_frequency, kwargs=kw, blocking=True)
 
-        proc = self.launch_process(function=self._listen, kwargs=kwargs)
-
-        print(f"Procs after listen: {proc} - {self.m_procs}")
+        proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=True if write_file else False)
         time.sleep(1)
         self.procs_alive(procs=[proc])
+        #print(f"Procs after listen: {proc} - {self.m_procs}")
+
+        if write_file:
+            kwargs |= {
+                "add" : write_file + " " + (filter_fields if filter_fields else str(preset))
+            }
+            proc = self.launch_process(function=self._read, kwargs=kwargs)
+
+            #print(f"Procs after read: {proc} - {self.m_procs}")
 
         # here we can wait until the timeout ends the shell script and _listen teminates 
         # while emptying the queue or read just A few of them and dispatch new tasks that 
@@ -141,8 +173,11 @@ class WiFi():
         for proc in processor:
             packets += proc.handle(raw=data)
 
-        # for pack in packets:
-        #     print(str(pack))
+        #for pack in packets:
+        #    print(str(pack))
+
+        self.m_data = packets
+
         return packets
 
     def process_capture(
@@ -167,21 +202,31 @@ class WiFi():
 
         if not kwargs.get("read_file"):
             print(f"[ERROR] process_capture - No file to read in 'read_file' key of kwargs specified.")
+        print(f"[*] {self.m_name} - Processing capture: {kwargs.get('read_file', '')}")
         if processor is None:
             processor = self.m_processor
         if not processor:
-            config = presets.TSHARK_FIELDS_VHT
+            preset = presets.TSHARK_FIELDS_VHT
+            if (mac_sa:= kwargs.pop("mac_sa", None)) and isinstance(mac_sa, str):
+                preset.add_filter(models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
+            if (mac_da:= kwargs.pop("mac_da", None))and  isinstance(mac_da, str):
+                preset.add_filter(models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
+
             kwargs |= (
                 {
-                    "add": str(kwargs.pop("read_file", "")) + " " + str(config)
+                    "add": str(kwargs.pop("read_file", "")) + " " + str(preset)
                 } if not (val:= kwargs.pop("filter_fields", "")) else {
                     "add": str(kwargs.pop("read_file", "")) + " " + val
                 }
             )
+
+            print(f"\t[*] Using preset: {str(preset)}.")
+
             processor = packet_processor.PacketProcessor(
-                name=config.NAME,
-                extractor=config.extractor()
+                name=preset.NAME,
+                extractor=preset.extractor()
             )
+
         else:
             kwargs |= (
                 {
@@ -216,6 +261,8 @@ class WiFi():
 
         #for pack in packets:
         #    print(str(pack))
+
+        self.m_data = packets
 
         return packets
 

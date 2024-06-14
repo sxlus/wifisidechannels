@@ -144,7 +144,7 @@ if [ $frequency -ne 0 ]; then
     iwconfig $device frequency "${frequency}G"
     #iwconfig $device power on
 fi
-
+echo $output
 if [ $listen -eq 1 ] || [[ "$read" != "" ]]; then
 
     [ $v -eq 1 ] && echo "Listen or Read"   

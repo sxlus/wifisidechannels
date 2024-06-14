@@ -42,7 +42,7 @@ class TxBf(wifi.WiFi):
             self,
             packets: list[models.Packet],
             check=True
-    ) -> list[models.Packet, list, list]:
+    ) -> list[list[models.Packet], list, list]:
 
         """
         The cython function used need uniform sized packets with respect to CBR
@@ -65,7 +65,14 @@ class TxBf(wifi.WiFi):
                 if not (cbr := packet.DATA.get(models.TsharkField.VHT_CBR.value)):
                     continue
                 if not (l_cbr:=len(cbr)) in groups.keys():
-                    groups[l_cbr] = []
+                    # allow one byte off -> does not imply different dims of V
+                    if not l_cbr+8 in groups.keys() and not l_cbr-8 in groups.keys():
+                        groups[l_cbr] = []
+                    elif l_cbr-8 in groups.keys():
+                        l_cbr -= 8
+                    elif l_cbr+8 in groups.keys():
+                        l_cbr += 8
+
                 groups[l_cbr].append(packet)
                 if not packet.DATA.get(models.ExtractorField.VHT_MIMO_CONTROL.value):
                     packet.DATA |= extract_MIMO_CONTROL.apply(packet)
@@ -73,6 +80,7 @@ class TxBf(wifi.WiFi):
                 v, t = wipicap.get_v_matrix(packets=groups[size])
                 out_v.append(v)
                 out_t.append(t)
+
             return packets, out_v, out_t
 
         return packets, wipicap.get_v_matrix(packets)

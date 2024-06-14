@@ -12,7 +12,7 @@ class Extractor:
         """Perform extraction"""
         return {}
     def __str__(self):
-        return f"[ Extractor ] : {str(self.KEY)}"
+        return f"[ Extractor ][ {str(self.KEY)} ]"
 
 class StringExtractor(Extractor):
     """
@@ -21,7 +21,7 @@ class StringExtractor(Extractor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def __str__(self):
-        return super().__str__() + f" - < String >"
+        return super().__str__() + f"[ String ]"
 
 class RegexExtractor(StringExtractor):
     """
@@ -56,7 +56,7 @@ class ColumnExtractor(StringExtractor):
         self.COLUMN = kwargs.get("COLUMN", 0)
         self.DELIM  = kwargs.get("DELIM", ",")
     def __str__(self):
-        return super().__str__() + f"[ COMUMN ]: {str(self.COLUMN)} - DELIM: {str(self.DELIM)}"
+        return super().__str__() + f"[ COMUMN ]: {str(self.COLUMN)} - [ DELIM ]: {hex(ord(self.DELIM))}"
 
     def apply(self, packet: models.Packet) -> dict:
         raw = [
