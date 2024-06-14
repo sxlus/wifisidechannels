@@ -90,7 +90,7 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
   python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_da "d83adde5662c" -pv -pps
 ```
 
-- Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` from `MAC` source address & parse `CBR` & plot the mean over all subs and angles ( in all metricies ).
+- Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` from `MAC` source address & parse `CBR` to angles & plot the mean over all subs and angles ( in all metricies ).
 
 ```bash
   python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_sa "127c6136fcc2" -pa 
@@ -102,16 +102,16 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
   python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng -pv -t 60 -w --mac_sa "127c6136fcc2" -dsd DUMP0/default/
 ```
 
-- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot each sub seperately & `save` output in directory `DUMP0` (default)
+- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `100 seconds` & filter `Action NoAck` and `MAC SA` and recover `V` from `CBR` & `save` output in directory `DUMP` (default)
 
 ```bash
-  python wifisidechannels/app/app.py -E -i "d83adde5662c" -c 64 -t 60 -pv -pps -w
+python wifisidechannels/app/app.py -E -i "wlx00c0caaba724" --mac_sa "127c6136fcc2" -c 64 -t 100 -w -wf AP_to_Phone_change_at_50perc_mac_sa_127c6136fcc2 -dsd DUMP
 ```
 
-- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot mean over all subs & `save` output to fixed substring filename `text` in directory `DUMP1`
+- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` &  parse `CBR` to angles & plot mean over all subs & show these plots & `save` output to fixed substring filename `text` in directory `DUMP1`
 
 ```bash
-  python wifisidechannels/app/app.py -E -i "d83adde5662c" -c 64 -t 60 -pv -pps -w -wf "test" -dsd `DUMP1`
+python wifisidechannels/app/app.py -E -i "wlx00c0caaba724" --mac_sa "127c6136fcc2" -c 64 -t 100 -w -pv -pa -sp -wf AP_to_Phone_change_at_50perc_mac_sa_127c6136fcc2 -dsd DUMP
 ```
 
 ### Troubeshoot Usage
