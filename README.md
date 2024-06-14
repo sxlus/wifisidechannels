@@ -51,30 +51,31 @@ options:
 
 It is important to use `pipx` when installing `poetry` to match the intended version of that project.
 
-- Install `pipx` to install python `poetry`
+1) Install `pipx` to install python `poetry` and install `tshark`, `iw` to capture packets and alternate the state if interfaces
 
-```bash
-sudo apt install pipx && pipx install poetry
-```
+    ```bash
+    sudo apt install pipx tshark iw && pipx install poetry && pipx ensurepath
+    ```
 
-- Install the virtual environment with poetry.
+2) Open a new terminal
+3) Install the virtual environment with poetry.
 
-```bash
-poetry install
-```
+    ```bash
+    poetry install
+    ```
 
-- Build modified part of `wipicap` - Cython parts,to recover `V`.
+4) Build modified part of `wipicap` - Cython parts,to recover `V`.
 
-```bash
-  cd components/wipicap/ && poetry run python setup.py build_ext --inplace
-```
+    ```bash
+      cd wifisidechannels/components/wipicap/ && poetry run python setup.py build_ext --inplace && cd ../../../../
+    ```
 
 ### Troubeshoot Installation
 
 #### Installing `virtual environment` for Capturing in monitor Mode
   
   The Framework will modify system devices to enable monitor mode, set channel and frequency on interfaces provided. For that it should be run with sufficient perminssions.
-  Installation under `root` seems fiddlely.
+  Installation under `root` seems fiddlely. Needs investigation.
 
 ## Usage
 
