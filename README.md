@@ -102,16 +102,16 @@ poetry install
   python wifisidechannels/app/app.py -r DUMP/noack_places.pcapng -t 60 --mac_sa "d83adde5662c" -pv -pps
 ```
 
-- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot each sub seperately & `save` output
+- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot each sub seperately & `save` output in directory `DUMP0` (default)
 
 ```bash
   python wifisidechannels/app/app.py -E -i "d83adde5662c" -c 64 -t 60 -pv -pps -w
 ```
 
-- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot mean over all subs & `save` output to fixed substring filename
+- `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot mean over all subs & `save` output to fixed substring filename `text` in directory `DUMP1`
 
 ```bash
-  python wifisidechannels/app/app.py -E -i "d83adde5662c" -c 64 -t 60 -pv -pps -w -wf "DUMP0/test"
+  python wifisidechannels/app/app.py -E -i "d83adde5662c" -c 64 -t 60 -pv -pps -w -wf "test" -dsd `DUMP1`
 ```
 
 ### Troubeshoot Usage
