@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "WiFiSidechannels"
+name = "wifisidechannels"
 version = "0.1.0"
 description = ""
 authors = ["sxlus <sxlus@protonmail.com>"]
@@ -8,12 +8,13 @@ authors = ["sxlus <sxlus@protonmail.com>"]
 python = "^3.10"
 matplotlib = "^3.8.4"
 scapy = "^2.5.0"
-gmpy = "^1.17"
 cython = "^3.0.10"
 pyshark = "^0.6"
 loguru = "^0.7.2"
 tqdm = "^4.66.4"
 joblib = "^1.4.2"
+setuptools = "^70.0.0"
+pyqt6 = "^6.7.0"
 
 [tool.poetry.dev-dependencies]
 
