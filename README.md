@@ -51,10 +51,10 @@ options:
 
 It is important to use `pipx` when installing `poetry` to match the intended version of that project.
 
-1) Install `pipx` to install python `poetry` and install `tshark`, `iw` to capture packets and alternate the state if interfaces
+1) Install `pipx` to install python `poetry` and install `tshark`, `iw` to capture packets and alternate the state if interfaces and `python3-dev` to compile wipi
 
     ```bash
-    sudo apt install pipx tshark iw && pipx install poetry && pipx ensurepath
+    sudo apt install pipx tshark python3-dev iw && pipx install poetry && pipx ensurepath
     ```
 
 2) Open a new terminal
@@ -82,7 +82,7 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
 - Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` from `MAC` source addres & reconstruct `V` & plot the mean over all subs ( in all metricies ).
 
 ```bash
-  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_sa "d83adde5662c" -pv
+  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_sa "127c6136fcc2" -pv
 ```
 
 - Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` to `MAC` destination address & reconstruct `V` & plot each sub seperately

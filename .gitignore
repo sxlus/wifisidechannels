@@ -6,3 +6,5 @@ gitlab-token.txt
 build
 pyshark
 NOTES
+wifisidechannels/components/wipicap/backends.c
+*.so
