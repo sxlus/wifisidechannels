@@ -82,25 +82,25 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
 - Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` from `MAC` source addres & reconstruct `V` & plot the mean over all subs ( in all metricies ).
 
 ```bash
-  python wifisidechannels/app/app.py -r DUMP/noack_places.pcapng --mac_sa "d83adde5662c" -pv
+  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_sa "d83adde5662c" -pv
 ```
 
 - Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` to `MAC` destination address & reconstruct `V` & plot each sub seperately
 
 ```bash
-  python wifisidechannels/app/app.py -r DUMP/noack_places.pcapng --mac_da "d83adde5662c" -pv -pps
+  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_da "d83adde5662c" -pv -pps
 ```
 
-- Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` to `MAC` destination address & parse `CBR` & plot the mean over all subs and angles ( in all metricies ).
+- Read `DUMP/noack_places.pcapng` & filter for `Action NoAck` from `MAC` source address & parse `CBR` & plot the mean over all subs and angles ( in all metricies ).
 
 ```bash
-  python wifisidechannels/app/app.py -r DUMP/noack_places.pcapng --mac_da "d83adde5662c" -pa
+  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng --mac_sa "127c6136fcc2" -pa 
 ```
 
-- Read `DUMP/noack_places.pcapng` for max. `60` seconds & filter for `Action NoAck` from `MAC` & reconstruct `V` & plot each sub seperately
+- Read `DUMP/noack_places.pcapng` for max. `60` seconds & filter for `Action NoAck` from `MAC` source address & reconstruct `V` & plot each sub seperately and write `-w` them to `DUMP0/default`
 
 ```bash
-  python wifisidechannels/app/app.py -r DUMP/noack_places.pcapng -t 60 --mac_sa "d83adde5662c" -pv -pps
+  python wifisidechannels/app/app.py -r DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng -pv -t 60 -w --mac_sa "127c6136fcc2" -dsd DUMP0/default/
 ```
 
 - `Enable Monitor`, set `channel` and capture trafic on `wlx00c0caaba724` for `60 seconds` & filter `Action NoAck` and recover `V` from `CBR` & plot each sub seperately & `save` output in directory `DUMP0` (default)

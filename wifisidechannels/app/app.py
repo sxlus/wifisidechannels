@@ -152,10 +152,11 @@ def main():
         os.chmod(OUTPUT_DIR, mode=0o777)
 
     if write_file:
-        if args.data_store_dir:
-            write_file = pathlib.Path(os.path.join(OUTPUT_DIR, write_file))
-        else:
-            write_file = pathlib.Path(write_file)
+        write_file = pathlib.Path(os.path.join(OUTPUT_DIR, write_file))
+
+    if args.read and not write_file:
+        read_file = pathlib.Path(args.read)
+        write_file = pathlib.Path(os.path.join(OUTPUT_DIR, read_file.stem.replace("_capture", "")))
 
     WFI = units.wifi.WiFi(**(
             {
