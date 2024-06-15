@@ -67,7 +67,7 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
 4) Build modified part of `wipicap` - Cython parts,to recover `V`.
 
     ```bash
-      cd wifisidechannels/components/wipicap/ && poetry run python setup.py build_ext --inplace && cd ../../../../
+      cd wifisidechannels/components/wipicap/ && poetry run python setup.py build_ext --inplace && cd ../../../
     ```
 
 ### Troubeshoot Installation
