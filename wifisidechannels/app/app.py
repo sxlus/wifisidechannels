@@ -138,7 +138,7 @@ def main():
     args = parser.parse_args()
 
     CWD = pathlib.Path(os.getcwd())
-    OUTPUT_DIR = pathlib.Path(os.path.join(CWD), args.data_store_dir)
+    OUTPUT_DIR = pathlib.Path(os.path.join(CWD, args.data_store_dir))
     OUT_FILE_DEFAULT = pathlib.Path(
         os.path.join(OUTPUT_DIR, f'{datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}')
         )
@@ -152,11 +152,14 @@ def main():
         os.chmod(OUTPUT_DIR, mode=0o777)
 
     if write_file:
-        write_file = pathlib.Path(os.path.join(OUTPUT_DIR, write_file))
-
-    if args.read and not write_file:
-        read_file = pathlib.Path(args.read)
-        write_file = pathlib.Path(os.path.join(OUTPUT_DIR, read_file.stem.replace("_capture", "")))
+        write_file = pathlib.Path(os.path.join(OUTPUT_DIR, write_file)).relative_to(CWD)
+    else:
+        if args.write:
+            if args.read:
+                read_file = pathlib.Path(args.read)
+                write_file = pathlib.Path(os.path.join(OUTPUT_DIR, read_file.stem.replace("_capture", ""))).relative_to(CWD)
+            elif args.eavesdrop:
+                write_file = OUT_FILE_DEFAULT.relative_to(CWD)
 
     WFI = units.wifi.WiFi(**(
             {
@@ -206,10 +209,8 @@ def main():
                         ) |
                         (
                             {
-                                "write_file" : str(pathlib.Path(os.path.join(write_file.parents[0],write_file.stem + "_capture.pcapng")).relative_to(CWD)) if write_file and write_file.is_absolute() \
-                                                    else str(pathlib.Path(os.path.join(write_file.parents[0],write_file.stem + "_capture.pcapng"))) if write_file \
-                                                        else str(pathlib.Path(OUT_FILE_DEFAULT.parents[0],OUT_FILE_DEFAULT.stem + "_capture.pcapng").relative_to(CWD))
-                            } if args.write else {}
+                                "write_file" :  str(pathlib.Path(os.path.join(write_file.parents[0],write_file.stem + "_capture.pcapng")))
+                            } if args.write or args.write_file else {}
                         ) |
                         (
                             {
@@ -255,19 +256,14 @@ def main():
             v = args.verbose if args.verbose else False,
             timeout= args.timeout if args.timeout else 60,
             vv = args.verbose if args.verbose else False,
-            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data_angles.dat")) if write_file \
-                            else pathlib.Path(os.path.join( OUT_FILE_DEFAULT.parents[0], OUT_FILE_DEFAULT.stem + "_data_angles.dat")).relative_to(CWD) if args.write \
-                                else None
+            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data_angles.dat")) if write_file else None,
             )
         try:
             test.TestStuff.test_angle_plot(
                 packets=pac,
                 plot_sub=args.plot_per_sub,
                 v=args.verbose,
-                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_angles.png")).relative_to(CWD) if write_file and write_file.is_absolute() \
-                                else pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_angles.png")) if write_file \
-                                    else pathlib.Path(os.path.join( OUT_FILE_DEFAULT.parents[0], OUT_FILE_DEFAULT.stem + "_graph_angles.png")).relative_to(CWD) if args.write \
-                                        else None,
+                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_angles.png")) if write_file else None,
                 show_plots = args.show_plots if write_file or args.write else True
             )
         except KeyboardInterrupt:
@@ -280,20 +276,14 @@ def main():
             packets = WFI.m_data if WFI.m_data else None,
             timeout= args.timeout if args.timeout else 60,
             v = args.verbose if args.verbose else False,
-            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data.dat")).relative_to(CWD) if write_file and write_file.is_absolute() \
-                            else pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data.dat")) if write_file \
-                                else pathlib.Path(os.path.join( OUT_FILE_DEFAULT.parents[0], OUT_FILE_DEFAULT.stem + "_data.dat")).relative_to(CWD) if args.write \
-                                    else None
+            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data.dat")) if write_file else None,
         )
         try:
             test.TestStuff.test_V_plot(
                 packets=pac,
                 plot_sub=args.plot_per_sub,
                 v=args.verbose,
-                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_V.png")).relative_to(CWD) if write_file and write_file.is_absolute() \
-                                else pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_V.png")) if write_file \
-                                    else pathlib.Path(os.path.join( OUT_FILE_DEFAULT.parents[0], OUT_FILE_DEFAULT.stem + "_graph_V.png")).relative_to(CWD) if args.write \
-                                        else None,
+                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_V.png")) if write_file else None,
                 show_plots = args.show_plots if write_file or args.write else True
             )
         except KeyboardInterrupt:

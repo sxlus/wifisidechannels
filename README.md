@@ -75,7 +75,6 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
 #### Installing `virtual environment` for Capturing in monitor Mode
   
   The Framework will modify system devices to enable monitor mode, set channel and frequency on interfaces provided. For that it should be run with sufficient perminssions.
-  Installation under `root` seems fiddlely. Needs investigation.
 
 ## Usage
 
@@ -122,6 +121,14 @@ It is important to use `pipx` when installing `poetry` to match the intended ver
   It is important that the `-wf` argument is relative path to the current working directory as for now pyshark does not accept absolute paths for outputfiles.
   Further it is important that the `user executing the framework OWNS the output directory`.
 
+#### qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
+  ```bash
+    sudo apt install libxcb-cursor-dev
+  ```
+#### qt.qpa.theme.dbus: Session DBus not running.
+  ```bash
+    sudo apt install dbus dbus-x11
+  ```
 ____
 
 ## Look into bash/setup_device.sh
