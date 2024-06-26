@@ -114,12 +114,21 @@ parser.add_argument(
     required=False,
     action="store_true",
     help="Plot Feedbackmatrix.")
+
 parser.add_argument(
-    "--plot-per-sub",
-    "-pps",
+    "--plot-sub",
+    "-ps",
+    required=False,
+    nargs="*",
+    default=None,
+    help="Plot for selection of subcarriers.")
+
+parser.add_argument(
+    "--subplots",
     required=False,
     action="store_true",
-    help="Plot each subplot individually.")
+    default=False,
+    help="Plot spatial streams in individual subplots.")
 parser.add_argument(
     "--show-plots",
     "-sp",
@@ -261,7 +270,7 @@ def main():
         try:
             test.TestStuff.test_angle_plot(
                 packets=pac,
-                plot_sub=args.plot_per_sub,
+                plot_sub=[ int(x, 10) for x in args.plot_sub ] if args.plot_sub is not None else [],
                 v=args.verbose,
                 save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_angles.png")) if write_file else None,
                 show_plots = args.show_plots if write_file or args.write else True
@@ -281,10 +290,11 @@ def main():
         try:
             test.TestStuff.test_V_plot(
                 packets=pac,
-                plot_sub=args.plot_per_sub,
+                plot_sub=[ int(x, 10) for x in args.plot_sub ] if args.plot_sub is not None else [],
                 v=args.verbose,
                 save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_V.png")) if write_file else None,
-                show_plots = args.show_plots if write_file or args.write else True
+                show_plots = args.show_plots if write_file or args.write else True,
+                subplots = args.subplots
             )
         except KeyboardInterrupt:
             pass

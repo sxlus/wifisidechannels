@@ -10,32 +10,51 @@ import typing
 import joblib
 
 
-DF = {
+DFV = {
     "ID"        : {
-        "f" : lambda x: np.sum(np.abs(x))/len(x) if isinstance(x, typing.Iterable) else x,
+        "f" : lambda V: { i: np.sum(np.abs(V[i])) for i in range(len(V))} if isinstance(V, typing.Iterable) else V,
         "data": {
         }
     },
     "var"       : {
-        "f" : lambda x: np.var(x),
+        "f" : lambda V: {i:np.var(V[i]) for i in range(len(V))},
         "data" : {
-
         }
     },
-    "sum_angle"     : {
-        "f" : lambda x: np.sum(np.angle(x)),
-        "data" : {
-        }
-    }
+#    "sum_angle"     : {
+#        "f" : lambda V: {i:np.sum(np.abs(np.angle(V[i]))) for i in range(len(V))},
+#        "data" : {
+#        }
+#    }
 }
 
-for l in [1, 2, 3]:
-    DF |= {
+
+DFA = {
+    "ID"        : {
+        "f" : lambda V: V,
+        "data": {
+        }
+    },
+#    "var"       : {
+#        "f" : lambda V: {i:np.var(V[i]) for i in range(len(V))},
+#        "data" : {
+#        }
+#    },
+#    "sum_angle"     : {
+#        "f" : lambda V: {i:np.sum(np.abs(np.angle(V[i]))) for i in range(len(V))},
+#        "data" : {
+#        }
+#    }
+}
+
+for l in [2]:
+    DFV |= {
         f"l{l}_norm"   : {
-            "f" : lambda x, l=l: np.power(np.sum(np.power(np.abs(x), l)), 1/l),
+            "f" : lambda V, l=l: {i:np.power(np.sum(np.power(np.abs(V[i]), l)), 1/l) for i in range(len(V))},
             "data" : {}
         }
     }
+
 
 class TestStuff(unittest.TestCase):
 
@@ -58,7 +77,6 @@ class TestStuff(unittest.TestCase):
             preset.add_filter(mod.models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
         if isinstance(mac_da, str):
             preset.add_filter(mod.models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
-
         if packets is None:
             TX = units.txbf.TxBf(**{
                 "set_up" : os.path.join("bash", "setup_device.sh") 
@@ -109,63 +127,65 @@ class TestStuff(unittest.TestCase):
             plot_sub: bool = False,
             save_file: pathlib.Path = None,
             show_plots: bool = True,
+            subplots: bool = False,
             v: bool=False
     ):
         TX = units.txbf.TxBf(**{
             "set_up" : os.path.join("bash", "setup_device.sh") 
         })
-
+        v = False
         for p in packets:
             angles          = p.DATA.get(mod.models.ExtractorField.VHT_CBR_PARSED.value, None)
             time            = p.DATA.get(mod.models.TsharkField.FRAME_TIME.value, None)
             if angles is None or time is None:
                 continue
 
-            all = { x: 0 for x in DF.keys() }
-            for x in DF.keys():
-                if not DF[x]["data"].get("all", False):
-                    DF[x]["data"]["all"] = []
+            for x in DFA.keys():
+                for sub_c in [ x for x in angles.keys() if x != "SNR" ]:
+                    if not DFA[x]["data"].get(sub_c, None):
+                        DFA[x]["data"][sub_c] = {}
 
-                for sub_v in angles.keys():
-                    if not (sub := DF[x]["data"].get(sub_v, None)):
-                        DF[x]["data"][sub_v] = []
-                    if isinstance(angles[sub_v], dict):
-                        values = [ angles.get(sub_v, {})[x] for x in angles[sub_v].keys() ]
-                    else:
-                        values = [ angles[sub_v] ]
-                        if v:
-                            print(f"[ {x} ]: {[[time , val ]] if not np.isnan((val:= DF[x]['f'](values))) else []}")
+                    if v:
+                        print(f"[ {x} ]: {[[time , angles[sub_c] ]] if isinstance(angles[sub_c], dict) else []}")
 
-                    DF[x]["data"][sub_v] += [[time , val ]] if not np.isnan((val:= DF[x]["f"](values))) else []
-                    all[x] += val
+                    for psiphy in angles[sub_c].keys():
+                        if not DFA[x]["data"][sub_c].get(psiphy, None):
+                            DFA[x]["data"][sub_c][psiphy] = []
+                        DFA[x]["data"][sub_c][psiphy] += [[time , angles[sub_c][psiphy] ]]
 
-                DF[x]["data"]["all"] += [ [time, all[x]/(len(values)*len(angles.keys()))] ]
+        for x in DFA.keys():
+            subs = list(DFA[x]["data"].keys())
+            if plot_sub == []:
+                subs_to_plot = subs
+            else:
+                subs_to_plot = plot_sub
 
-        if plot_sub:
-            for x in DF.keys():
-                for i, sub in enumerate((keys:=list(DF[x]["data"].keys()))):
+            for sub_c in [ x for x in subs_to_plot if x in subs ]:
+                if not subplots:
+                    for i, psyphy in enumerate(list(DFA[x]["data"][sub_c].keys())):
+                        TX.m_plotter.plot_data(
+                            data=DFA[x]["data"][sub_c][psyphy],
+                            msg=f"[ angles ][ {x} ][ SUB: {sub_c} ]",
+                            label=f"Angle: {psyphy}",
+                            plot=show_plots and (i == (len(list(DFA[x]["data"][sub_c].keys()))-1)),
+                            scatter=False,
+                            subplots=subplots,
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                        )
+                else:
+                    data = [ DFA[x]["data"][sub_c][psyphy] for psyphy in DFA[x]["data"][sub_c].keys() ]
                     TX.m_plotter.plot_data(
-                        data=DF[x]["data"][sub],
-                        msg=f"[ {x} ][ SUB: {sub} ]",
-                        label=f"Sc: {sub}",
-                        plot=show_plots,
-                        scatter=False,
-                        save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub)}" + save_file.suffix) if save_file and not show_plots else None
-                    )
-        else:
-            for x in DF.keys():
-                TX.m_plotter.plot_data(
-                    data=DF[x]["data"].get("all", []),
-                    msg=f"[ mean over subs ][ {x} ]",
-                    label=f"mean over subs: {x}",
-                    plot=show_plots,
-                    scatter=False,
-                    save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}" + save_file.suffix) if save_file and not show_plots else None
-                )
-
+                            data=data,
+                            msg=f"[ angles ][ {x} ][ SUB: {sub_c} ]",
+                            label=[f"Angle: {psyphy}" for psyphy in DFA[x]["data"][sub_c].keys() ],
+                            plot=show_plots,
+                            scatter=False,
+                            subplots=subplots,
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                        )
         # reset DF
-        for x in DF.keys():
-            DF[x]["data"] = {}
+        for x in DFA.keys():
+            DFA[x]["data"] = {}
 
     def test_V_extract(
             file: str = None,
@@ -217,11 +237,13 @@ class TestStuff(unittest.TestCase):
 
     def test_V_plot(
             packets: mod.models.Packet,
-            plot_sub: bool = False,
+            plot_sub: list[int] = [],
             save_file: pathlib.Path = None,
             show_plots: bool = True,
+            subplots: bool = False,
             v: bool=False
     ):
+
         TX = units.txbf.TxBf(**{
             "set_up" : os.path.join("bash", "setup_device.sh") 
         })
@@ -229,49 +251,57 @@ class TestStuff(unittest.TestCase):
         for p in packets:
             V       = p.DATA.get(mod.models.ExtractorField.VHT_STEERING_MATRIX.value, None)
             time    = p.DATA.get(mod.models.TsharkField.FRAME_TIME.value, None)
+
             if V is None or time is None:
-                #print("exit")
                 continue
-            all = { x: 0 for x in DF.keys() }
-            for i, sub_v in enumerate(V[0]):
-                for x in DF.keys():
-                    if not DF[x]["data"].get("all"):
-                        DF[x]["data"]["all"] = []
-                    if not (sub := DF[x]["data"].get(i, None)):
-                        DF[x]["data"][i] = []
-                    if v:
-                        print(f"[ {x} ]: {[[time , val ]] if not np.isnan((val:= DF[x]['f'](sub_v))) else []}")
-                    DF[x]["data"][i] += [[ time , val ]] if not np.isnan((val:= DF[x]["f"](sub_v))) else []
-                    all[x] += val
+            for idx in range(len(V)):
+                for sub_c, sub_v in enumerate(V[idx]):
+                    for x in DFV.keys():
+                        if not DFV[x]["data"].get(sub_c):
+                            DFV[x]["data"][sub_c] = {}
 
-            for x in DF.keys():
-                DF[x]["data"]["all"] += [ [time, all[x]/len(V[0])] ]
+                        val = DFV[x]['f'](sub_v)
 
-        if plot_sub:
-            for x in DF.keys():
-                for i, sub in enumerate((keys:=list(DF[x]["data"].keys()))):
+                        if v:
+                            print(f"[ {x} ]: {[ time , [ val[spatial] for spatial in val.keys() ] ] if isinstance(val, dict) else []}")
+                        for spatial in val.keys():
+                            if DFV[x]["data"][sub_c].get(spatial, None) is None:
+                                DFV[x]["data"][sub_c][spatial] = []
+                            DFV[x]["data"][sub_c][spatial] += [[ time , val[spatial] ]]
+
+        for x in DFV.keys():
+            subs = list(DFV[x]["data"].keys())
+            if plot_sub == []:
+                subs_to_plot = subs
+            else:
+                subs_to_plot = plot_sub
+            for sub_c in [ x for x in subs_to_plot if x in subs ]:
+                data = [ DFV[x]["data"][sub_c][spatial] for spatial in DFV[x]["data"][sub_c].keys() ]
+                if not subplots:
+                    for i, spatial in enumerate(data):
+                        TX.m_plotter.plot_data(
+                            data=spatial,
+                            msg=f"[ V ][ {x} ][ SUB: {sub_c} ]",
+                            label=f"spatial stream: {i}",
+                            plot=show_plots and (i == len(data)-1),
+                            scatter=False,
+                            subplots=subplots,
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                        )
+                else:
                     TX.m_plotter.plot_data(
-                        data=DF[x]["data"][sub],
-                        msg=f"[ {x} ][ SUB: {sub} ]",
-                        label=f"Sc: {sub}",
+                        data=data,
+                        msg=f"[ V ][ {x} ][ SUB: {sub_c} ]",
+                        label=[f"spatial stream: {spatial}" for spatial in DFV[x]["data"][sub_c].keys() ],
                         plot=show_plots,
                         scatter=False,
-                        save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub)}" + save_file.suffix) if save_file and not show_plots else None
+                        subplots=subplots,
+                        save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
                     )
-        else:
-            for x in DF.keys():
-                TX.m_plotter.plot_data(
-                    data=DF[x]["data"].get("all", []),
-                    msg=f"[ mean over subs ][ {x} ]",
-                    label="mean_of_sub",
-                    plot=show_plots,
-                    scatter=False,
-                    save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}" + save_file.suffix) if save_file and not show_plots else None
-                )
 
         # reset DF
-        for x in DF.keys():
-            DF[x]["data"] = {}
+        for x in DFV.keys():
+            DFV[x]["data"] = {}
 
 def main():
     unittest.main()

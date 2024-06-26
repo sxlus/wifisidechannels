@@ -47,11 +47,9 @@ class Plotter():
             save_file: str | pathlib.Path = None,
             dpi: int = 200
     ) -> np.ndarray:
-
         if not isinstance(data, list) or not data:
             print(f"{self.m_name} [ERROR] Data not plotable {str(data)} ")
             return None
-        subplots = False
         if subplots is True and ax is None:
             plt.rcParams["figure.figsize"] = size
             fig, axs = plt.subplots(len(data), 1, sharex="row")
@@ -59,16 +57,17 @@ class Plotter():
                 self.plot_data(
                     data=data[idx],
                     size=size,
-                    msg=msg,
+                    msg=msg if idx == 0 else "",
                     plot=False,
                     scatter=scatter,
                     label=label[idx] if (isinstance(label, list) and idx < len(label)) else str(label) if label is not None else None,
                     subplots=True,
                     ax=axs[idx]
                 )
+
             if plot is True:
-                plt.title(f"Plotting: {msg}")
-                plt.legend()
+                #plt.title(f"Plotting: {msg}")
+                #plt.legend()
                 plt.show()
             if save_file is not None:
                 fig.savefig(str(save_file), dpi = dpi)
@@ -86,6 +85,11 @@ class Plotter():
         plt.rcParams["figure.figsize"] = size
         if ax:
             sp = ax
+            sp.set(
+                xlabel="",
+                ylabel="",
+                title=msg
+            )
         else:
             sp = plt
             sp.title(f"Plotting: {msg}")
@@ -101,13 +105,17 @@ class Plotter():
             #    "top":        max(cylimr, max(codomain))
             #    }
             #)
+
+
         if scatter:
             sp.scatter(domain, codomain, c = np.random.rand(domain.shape[0]), s = (30 * np.random.rand(domain.shape[0]))**2, alpha=0.5, label=("" if not label else str(label)))
             if subplots is True and ax is not None:
                 sp.legend()
         else:
             sp.plot(
-                codomain, label=("" if not label else str(label)))
+                codomain,
+                label=("" if not label else str(label))
+            )
             if subplots is True and ax is not None:
                 sp.legend()
         if plot:
