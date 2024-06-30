@@ -12,12 +12,12 @@ import joblib
 
 DFV = {
     "ID"        : {
-        "f" : lambda V: { i: np.sum(np.abs(V[i])) for i in range(len(V))} if isinstance(V, typing.Iterable) else V,
+        "f" : lambda V: { i if j==0 else i+1+j: np.sum(np.abs(V[i][j])) for i in range(len(V)) for j in range(len(V[i]))} if isinstance(V, typing.Iterable) else V,
         "data": {
         }
     },
     "var"       : {
-        "f" : lambda V: {i:np.var(V[i]) for i in range(len(V))},
+        "f" : lambda V: {i if j==0 else i+1+j:np.var(V[i][j]) for i in range(len(V)) for j in range(len(V[i]))},
         "data" : {
         }
     },
@@ -50,7 +50,7 @@ DFA = {
 for l in [2]:
     DFV |= {
         f"l{l}_norm"   : {
-            "f" : lambda V, l=l: {i:np.power(np.sum(np.power(np.abs(V[i]), l)), 1/l) for i in range(len(V))},
+            "f" : lambda V, l=l: {i if j==0 else i+1+j:np.power(np.sum(np.power(np.abs(V[i][j]), l)), 1/l) for i in range(len(V)) for j in range(len(V[i]))},
             "data" : {}
         }
     }
@@ -194,6 +194,7 @@ class TestStuff(unittest.TestCase):
             mac_sa: str = None,
             mac_da: str = None,
             save_file: pathlib.Path = None,
+            bandwidth: list[int] | int = None,
             v:bool = False,
     ):
 
@@ -217,9 +218,9 @@ class TestStuff(unittest.TestCase):
             )
         else:
             pac = packets
-
         pac = TX.process_VHT_MIMO_CONTROL(packets=pac)
-        pac, V, T = TX.process_VHT_COMPRESSED_BREAMFROMING_REPORT(packets=pac, check=True)
+        pac, V, T = TX.process_VHT_COMPRESSED_BREAMFROMING_REPORT(packets=pac, check=True, bandwidth=bandwidth)
+
         if v:
             for p in pac:
                 M  = p.DATA.get(mod.models.ExtractorField.VHT_STEERING_MATRIX.value)
@@ -228,10 +229,12 @@ class TestStuff(unittest.TestCase):
                 print(f"* Packet @ {str(p.TIME)}:\t Nr x Nc: {str(Nr): <2} x {str(Nc): >2}\tV.shape: {str(M.shape) if isinstance(M, np.ndarray) else 'None'}")
 
         if save_file:
-            print(f"\t[*] Writing Feedbackmatrices V to: {os.path.join(save_file.parents[0], save_file.stem + '_V' + save_file.suffix): >64}.")
-            print(f"\t[*] Writing Time T to: {os.path.join(save_file.parents[0], save_file.stem + '_T' + save_file.suffix): >76}.")
-            joblib.dump(V, os.path.join(save_file.parents[0], save_file.stem + "_V" + save_file.suffix))
-            joblib.dump(T, os.path.join(save_file.parents[0], save_file.stem + "_T" + save_file.suffix))
+            v_file = os.path.join(save_file.parents[0], save_file.stem + '_V' + save_file.suffix)
+            t_file = os.path.join(save_file.parents[0], save_file.stem + '_T' + save_file.suffix)
+            print(f"\t[*] Writing Feedbackmatrices V to: {v_file: >64}.")
+            print(f"\t[*] Writing Time T to: {t_file: >76}.")
+            joblib.dump(V, v_file)
+            joblib.dump(T, t_file)
 
         return pac
 
@@ -247,7 +250,6 @@ class TestStuff(unittest.TestCase):
         TX = units.txbf.TxBf(**{
             "set_up" : os.path.join("bash", "setup_device.sh") 
         })
-
         for p in packets:
             V       = p.DATA.get(mod.models.ExtractorField.VHT_STEERING_MATRIX.value, None)
             time    = p.DATA.get(mod.models.TsharkField.FRAME_TIME.value, None)
