@@ -113,7 +113,26 @@ parser.add_argument(
     "-pv",
     required=False,
     action="store_true",
-    help="Plot Feedbackmatrix.")
+    help="Plot Feedbackmatrix timeseries per subcarrier x spatial streams.")
+parser.add_argument(
+    "--plot_v_spec",
+    "-pvspec",
+    required=False,
+    action="store_true",
+    help="Plot Feedbackmatrix timeseries as spectogram.")
+parser.add_argument(
+    "--plot-bandwidth",
+    "-pb",
+    required=False,
+    nargs="*",
+    default=None,
+    help="Plot for selection of bandwidths. ( usefull for spectogram )")
+parser.add_argument(
+    "--plot_v_sample",
+    "-pvs",
+    required=False,
+    action="store_true",
+    help="Plot Feedbackmatrices per spatial stream of single samples.")
 
 parser.add_argument(
     "--plot-sub",
@@ -121,8 +140,7 @@ parser.add_argument(
     required=False,
     nargs="*",
     default=None,
-    help="Plot for selection of subcarriers.")
-
+    help="Plot for selection of subcarriers or samples.")
 parser.add_argument(
     "--subplots",
     required=False,
@@ -170,7 +188,7 @@ def main():
             elif args.eavesdrop:
                 write_file = OUT_FILE_DEFAULT.relative_to(CWD)
 
-    WFI = units.wifi.WiFi(**(
+    WFI = units.txbf.TxBf(**(
             {
                 "interface"   : "wlan0" if not args.interface else args.interface[0],
             } |
@@ -272,12 +290,13 @@ def main():
                 packets=pac,
                 plot_sub=[ int(x, 10) for x in args.plot_sub ] if args.plot_sub is not None else [],
                 v=args.verbose,
-                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_angles.png")) if write_file else None,
-                show_plots = args.show_plots if write_file or args.write else True
+                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_qangles_sum.png")) if write_file else None,
+                show_plots = args.show_plots if (write_file or args.write) else True
             )
         except KeyboardInterrupt:
             pass
-    if args.plot_v:
+
+    if args.plot_v or args.plot_v_spec or args.plot_v_sample:
         pac = test.TestStuff.test_V_extract(
             file = args.read if args.read else "../DUMP/0txbf.pcapng",
             mac_sa = args.mac_sa if args.mac_sa else None,
@@ -285,8 +304,41 @@ def main():
             packets = WFI.m_data if WFI.m_data else None,
             timeout= args.timeout if args.timeout else 60,
             v = args.verbose if args.verbose else False,
+            bandwidth = [ int(x, 10) for x in args.plot_bandwidth ] if args.plot_bandwidth else None,
             save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data.dat")) if write_file else None,
         )
+
+    if args.plot_v_spec:
+        try:
+            WFI.plot_feedback_hist(
+                packets=pac,
+                save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + f"_spectogram"+ ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else ""))+".png")) if write_file else None,
+                dpi= 200,
+                size= (20,10),
+                plot=args.show_plots if write_file or args.write else True,
+                v=args.verbose if args.verbose else False,
+                bandwidth = [ int(x, 10) for x in args.plot_bandwidth ] if args.plot_bandwidth else None,
+                window_title=f"Spectorgram of Sample {str(write_file)}" + (f" @ bandwidth {''.join(args.plot_bandwidth)}" if args.plot_bandwidth else "")
+            )
+        except KeyboardInterrupt:
+            pass
+
+    if args.plot_v_sample:
+        try:
+            for i in [ val for x in args.plot_sub if (val:= int(x, 10) < len(pac)) ] if args.plot_sub is not None else range(len(pac)):
+                WFI.plot_feedback_packet(
+                    packet=pac[i],
+                    save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + f"_sample_{i}"+ ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else ""))+".png")) if write_file else None,
+                    dpi= 200,
+                    size= (20,10),
+                    plot=args.show_plots if write_file or args.write else True,
+                    v=args.verbose if args.verbose else False,
+                    window_title=f"[ Packet {i} ]"
+                )
+        except KeyboardInterrupt:
+            pass
+
+    if args.plot_v:
         try:
             test.TestStuff.test_V_plot(
                 packets=pac,

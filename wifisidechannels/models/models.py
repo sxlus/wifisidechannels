@@ -175,7 +175,7 @@ class VHT_MIMO_CONTROL_CONTROL(WifiField):
         "Nr"                        : int("111"+3*"0"       , 2),       # how many rows
         "channel_width"             : int("11"+6*"0"        , 2),       # channel_width -> #subcarrier
         "grouping"                  : int("11"+8*"0"        , 2),       # grouping      -> #subcarrier
-        "codebook"                  : int("1"+10*"0"         , 2),      # quantizising steps for phi, psi
+        "codebook"                  : int("1"+10*"0"        , 2),      # quantizising steps for phi, psi
         "feedback_type"             : int("1"+11*"0"        , 2),       # `SU` or `MU`
         "remaining_fedback_segments": int("111"+12*"0"      , 2),
         "first_fedback_segment"     : int("1"+15*"0"        , 2),
