@@ -10,7 +10,7 @@ wifisidechannels/components/wipicap/backends.c
 *.so
 DUMP0/
 DUMP1/
-DUMP/*.png
+#DUMP/*.png
 BIG/
 bash/interact_STA.sh
 test.ipynb

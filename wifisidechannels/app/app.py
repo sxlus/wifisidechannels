@@ -305,14 +305,14 @@ def main():
             timeout= args.timeout if args.timeout else 60,
             v = args.verbose if args.verbose else False,
             bandwidth = [ int(x, 10) for x in args.plot_bandwidth ] if args.plot_bandwidth else None,
-            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_data.dat")) if write_file else None,
+            save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + "_data.dat")) if write_file else None,
         )
 
     if args.plot_v_spec:
         try:
             WFI.plot_feedback_hist(
                 packets=pac,
-                save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + f"_spectogram"+ ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else ""))+".png")) if write_file else None,
+                save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + "_spectogram.png")) if write_file else None,
                 dpi= 200,
                 size= (20,10),
                 plot=args.show_plots if write_file or args.write else True,
@@ -328,7 +328,7 @@ def main():
             for i in [ val for x in args.plot_sub if (val:= int(x, 10) < len(pac)) ] if args.plot_sub is not None else range(len(pac)):
                 WFI.plot_feedback_packet(
                     packet=pac[i],
-                    save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + f"_sample_{i}"+ ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else ""))+".png")) if write_file else None,
+                    save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + f"_sample_{i}.png")) if write_file else None,
                     dpi= 200,
                     size= (20,10),
                     plot=args.show_plots if write_file or args.write else True,
@@ -344,7 +344,7 @@ def main():
                 packets=pac,
                 plot_sub=[ int(x, 10) for x in args.plot_sub ] if args.plot_sub is not None else [],
                 v=args.verbose,
-                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_graph_V.png")) if write_file else None,
+                save_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + "_graph_V.png")) if write_file else None,
                 show_plots = args.show_plots if write_file or args.write else True,
                 subplots = args.subplots
             )

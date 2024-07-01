@@ -122,13 +122,17 @@ python wifisidechannels/app/app.py -E -i "wlx00c0caaba724" --mac_sa "127c6136fcc
   Further it is important that the `user executing the framework OWNS the output directory`.
 
 #### qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
+
   ```bash
     sudo apt install libxcb-cursor-dev
   ```
+
 #### qt.qpa.theme.dbus: Session DBus not running.
+
   ```bash
     sudo apt install dbus dbus-x11
   ```
+
 ____
 
 ## Look into bash/setup_device.sh

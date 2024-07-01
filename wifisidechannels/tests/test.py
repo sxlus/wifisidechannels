@@ -12,12 +12,12 @@ import joblib
 
 DFV = {
     "ID"        : {
-        "f" : lambda V: { i if j==0 else i+1+j: np.sum(np.abs(V[i][j])) for i in range(len(V)) for j in range(len(V[i]))} if isinstance(V, typing.Iterable) else V,
+        "f" : lambda V: { i : np.sum(np.abs(V[i][0])) for i in range(len(V))} if isinstance(V, typing.Iterable) else V,
         "data": {
         }
     },
     "var"       : {
-        "f" : lambda V: {i if j==0 else i+1+j:np.var(V[i][j]) for i in range(len(V)) for j in range(len(V[i]))},
+        "f" : lambda V: {i :np.var(V[i][0]) for i in range(len(V))},
         "data" : {
         }
     },
@@ -50,7 +50,7 @@ DFA = {
 for l in [2]:
     DFV |= {
         f"l{l}_norm"   : {
-            "f" : lambda V, l=l: {i if j==0 else i+1+j:np.power(np.sum(np.power(np.abs(V[i][j]), l)), 1/l) for i in range(len(V)) for j in range(len(V[i]))},
+            "f" : lambda V, l=l: {i :np.power(np.sum(np.power(np.abs(V[i][0]), l)), 1/l) for i in range(len(V))},
             "data" : {}
         }
     }
@@ -170,7 +170,7 @@ class TestStuff(unittest.TestCase):
                             plot=show_plots and (i == (len(list(DFA[x]["data"][sub_c].keys()))-1)),
                             scatter=False,
                             subplots=subplots,
-                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file else None
                         )
                 else:
                     data = [ DFA[x]["data"][sub_c][psyphy] for psyphy in DFA[x]["data"][sub_c].keys() ]
@@ -181,7 +181,7 @@ class TestStuff(unittest.TestCase):
                             plot=show_plots,
                             scatter=False,
                             subplots=subplots,
-                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file else None
                         )
         # reset DF
         for x in DFA.keys():
@@ -288,7 +288,7 @@ class TestStuff(unittest.TestCase):
                             plot=show_plots and (i == len(data)-1),
                             scatter=False,
                             subplots=subplots,
-                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                            save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file else None
                         )
                 else:
                     TX.m_plotter.plot_data(
@@ -298,7 +298,7 @@ class TestStuff(unittest.TestCase):
                         plot=show_plots,
                         scatter=False,
                         subplots=subplots,
-                        save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file and not show_plots else None
+                        save_file=os.path.join(save_file.parents[0], save_file.stem + f"_{x}_{str(sub_c)}" + save_file.suffix) if save_file else None
                     )
 
         # reset DF
