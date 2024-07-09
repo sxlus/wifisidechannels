@@ -127,6 +127,7 @@ class TxBf(wifi.WiFi):
                     key = f"{i+1},{1}"
                     if key not in new.keys():
                         new[key] = []
+                    
                     new[key].append(np.abs(sub_v[i][0]))
                     #print(f"\t{key}: {sub_v[i][0]} {np.abs(sub_v[i][0])}")
             for x in new.keys():
@@ -200,6 +201,7 @@ class TxBf(wifi.WiFi):
                 if key not in data.keys():
                     data[key] = []
                 data[key].append(np.abs(sub_v[i][0]))
+                #print(f"\t{key}: {sub_v[i][0]} {np.abs(sub_v[i][0])}")
         
         if v: print([ data[spatial] for spatial in data.keys() ])
         self.m_plotter.plot_data(
