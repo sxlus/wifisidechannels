@@ -140,7 +140,7 @@ parser.add_argument(
     required=False,
     nargs="*",
     default=None,
-    help="Plot for selection of subcarriers or samples.")
+    help="Plot for selection of subcarriers or samples or spatial streams (indexed from zero).")
 parser.add_argument(
     "--subplots",
     required=False,
@@ -312,12 +312,13 @@ def main():
         try:
             WFI.plot_feedback_hist(
                 packets=pac,
-                save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + "_spectogram.png")) if write_file else None,
+                save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + ((f"_st_{'-'.join([str(y) for y in args.plot_sub])}" if args.plot_sub else "")) + "_spectogram.png")) if write_file else None,
                 dpi= 200,
-                size= (20,10),
+                size= (10,5),
                 plot=args.show_plots if write_file or args.write else True,
                 v=args.verbose if args.verbose else False,
-                bandwidth = [ int(x, 10) for x in args.plot_bandwidth ] if args.plot_bandwidth else None,
+                bandwidth = [ int(x, 10) for x in args.plot_bandwidth ] if args.plot_bandwidth is not None else None,
+                plot_spatial=[ int(x, 10) for x in args.plot_sub ] if args.plot_sub is not None else None,
                 window_title=f"Spectorgram of Sample {str(write_file)}" + (f" @ bandwidth {''.join(args.plot_bandwidth)}" if args.plot_bandwidth else "")
             )
         except KeyboardInterrupt:
@@ -330,7 +331,7 @@ def main():
                     packet=pac[i],
                     save_file=pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + ((f"_bw_{'-'.join([str(y) for y in args.plot_bandwidth])}" if args.plot_bandwidth else "")) + f"_sample_{i}.png")) if write_file else None,
                     dpi= 200,
-                    size= (20,10),
+                    size= (10,5),
                     plot=args.show_plots if write_file or args.write else True,
                     v=args.verbose if args.verbose else False,
                     window_title=f"[ Packet {i} ]"

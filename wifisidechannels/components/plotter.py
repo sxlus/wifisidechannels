@@ -80,11 +80,12 @@ class Plotter():
             if plot is True:
                 #plt.title(f"Plotting: {msg}")
                 #plt.legend()
+                fig.tight_layout()
+                fig.subplots_adjust(top=0.88)
                 plt.show()
             if save_file is not None:
                 fig.savefig(str(save_file), dpi = dpi)
             return
-
         if not imshow:
             if not isinstance(data[0], list):
                 domain      = np.arange(start=0, stop=len(data))
@@ -106,7 +107,10 @@ class Plotter():
             )
         else:
             sp = plt
+            figure = sp.figure()
             sp.title(f"Plotting: {msg}")
+            plt.xlabel(xlabel=xlabel)
+            plt.ylabel(ylabel=ylabel)
             #cxliml, cxlimr = plt.xlim()
             #plt.xlim(**{
             #    "left":     min(cxliml, min(domain)),
@@ -128,7 +132,7 @@ class Plotter():
         elif imshow:
             #pcm = sp.imshow(codomain, cmap='viridis', aspect='auto')
             pcm = sp.pcolormesh(np.real(codomain), cmap='viridis', linewidth=0, rasterized=True)
-            figure.colorbar(pcm, ax = sp)
+            figure.colorbar(pcm, ax = sp if sp != plt else None)
 
         else:
             sp.plot(
@@ -137,12 +141,10 @@ class Plotter():
             )
             if subplots is True and ax is not None and label is not None:
                 sp.legend()
-        if plot:
-            sp.legend()
-            sp.show()
         if save_file is not None:
             plt.savefig(str(save_file), dpi = dpi)
             if plot is False:
                 plt.clf()
-
+        if plot:
+            plt.show()
         return codomain

@@ -101,6 +101,7 @@ class TxBf(wifi.WiFi):
             save_file: pathlib.Path = None,
             window_title: str = None,
             bandwidth: list[int] | int = None,
+            plot_spatial: list[int] = None,
             v: bool=False
     ) -> None:
 
@@ -124,7 +125,7 @@ class TxBf(wifi.WiFi):
             for sub_c, sub_v in enumerate(V):
                 for i in range(len(sub_v)):
                     #for j in range(len(sub_v[i])):
-                    key = f"{i+1},{1}"
+                    key = f"{i},{0}"
                     if key not in new.keys():
                         new[key] = []
                     
@@ -156,17 +157,16 @@ class TxBf(wifi.WiFi):
                 if i != j:
                     print("Error", i, j)
                     return
-        #for i in range(len(data[x])):
-        #    print(len(data[x][i]))
-        #val = [ data[spatial] for spatial in data.keys() ]
-        #for x in val[0]:
-        #    print(x)
         self.m_plotter.plot_data(
-            data=[ data[spatial] for spatial in data.keys() ],
-            msg=[ f"[ abs(V_{key}) ]" for key in data.keys() ],
+            data=[ data[spatial] for spatial in data.keys() if int(spatial[0],10) in plot_spatial] if plot_spatial and len(plot_spatial) > 1 \
+                    else [ data[spatial] for spatial in data.keys() if int(spatial[0],10) in plot_spatial][0] if plot_spatial and len(plot_spatial) == 1 \
+                        else [ data[spatial] for spatial in data.keys() ],
+            msg=[ f"[ abs(V_{spatial}) ]" for spatial in data.keys() if int(spatial[0],10) in plot_spatial] if plot_spatial  and len(plot_spatial) > 1 \
+                    else [ f"[ abs(V_{spatial}) ]" for spatial in data.keys() if int(spatial[0],10) in plot_spatial][0] if plot_spatial and len(plot_spatial) == 1 \
+                        else [ f"[ abs(V_{spatial}) ]" for spatial in data.keys() ],
             xlabel="Time",
             ylabel="Sub carrier index",
-            subplots=True,
+            subplots=True if not plot_spatial or len(plot_spatial) > 1 else False,
             save_file=save_file,
             dpi=dpi,
             size=size,
@@ -196,7 +196,7 @@ class TxBf(wifi.WiFi):
         for sub_v in V:
             for i in range(len(sub_v)):
                 #for j in range(len(sub_v[i])):
-                key = f"{i+1},{1}"
+                key = f"{i},{0}"
                 if v: print(f"\t{key}: {sub_v[i][0]}")
                 if key not in data.keys():
                     data[key] = []
