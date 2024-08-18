@@ -14,7 +14,7 @@ DUMP3/
 DUMP/*.png
 DUMP/*.dat
 DUMP/*/*.png
-DUMP/*/.*dat
+DUMP/*/*.dat
 BIG/
 bash/interact_STA.sh
 test.ipynb
