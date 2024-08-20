@@ -55,7 +55,7 @@ class PacketProcessor():
             self,
             raw: list[str | bytes],
             name: str = "",
-            extract: extractor.Extractor | list[extractor.Extractor] = None
+            extract: extractor.Extractor | list[extractor.Extractor] | None = None
     ) -> list[models.Packet]:
 
         todo = self.add_todo(raw=raw, name=name)
@@ -83,7 +83,7 @@ class PacketProcessor():
     def parse_packet(
             self,
             inp: models.Packet,
-            extract: list[extractor.Extractor] = None
+            extract: list[extractor.Extractor] | None = None
     ) -> dict:
         if extract is None:
             extract = self.m_extractor
@@ -111,8 +111,8 @@ class PacketProcessor():
 
     def extract(
             self,
-            todo: models.Packet | list[models.Packet]                     = None,
-            extract: extractor.Extractor | list[extractor.Extractor]      = None
+            todo: models.Packet | list[models.Packet] | None                   = None,
+            extract: extractor.Extractor | list[extractor.Extractor] | None    = None
     ) -> list[models.Packet]:
 
         """Extract num packets from m_todo @ """
@@ -133,8 +133,8 @@ class PacketProcessor():
 
     def parse(
             self,
-            todo: models.Packet | list[models.Packet]                           = None,
-            extract: extractor.FieldExtractor | list[extractor.FieldExtractor]  = None,
+            todo: models.Packet | list[models.Packet] | None                          = None,
+            extract: extractor.FieldExtractor | list[extractor.FieldExtractor] | None = None,
     ):
         todo        = self.m_todo       if todo is None     else [ todo ]       if isinstance(todo, models.Packet)                  else todo
         extract     = self.m_extractor  if extract is None  else [ extract ]    if isinstance(extract, extractor.FieldExtractor)    else extract
