@@ -52,7 +52,7 @@ class WiFi():
         self.m_set_up   = pathlib.Path(os.path.join("bash/setup_device.sh")) if \
                            not kwargs.get("set_up", "") else kwargs.get("set_up", "")
 
-    def eavesdrop(
+    def _eavesdrop(
             self,
             processor:  packet_processor.PacketProcessor | \
                     list[packet_processor.PacketProcessor]  = None,
@@ -157,7 +157,17 @@ class WiFi():
             }
             proc = self.launch_process(function=self._read, kwargs=kwargs)
 
-            #print(f"Procs after read: {proc} - {self.m_procs}")
+        return processor,timeout,kwargs,proc
+
+    def eavesdrop(
+            self,
+            processor:  packet_processor.PacketProcessor | \
+                    list[packet_processor.PacketProcessor]  = None,
+            timeout: int                                    = 10,
+            kwargs: dict                                    = {}
+    ) -> list[models.Packet]:
+
+        processor,timeout,kwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=kwargs)
 
         # here we can wait until the timeout ends the shell script and _listen teminates 
         # while emptying the queue or read just A few of them and dispatch new tasks that 
@@ -180,6 +190,28 @@ class WiFi():
 
         return packets
 
+    def collect_sample(
+            self,
+            processor:  packet_processor.PacketProcessor | \
+                    list[packet_processor.PacketProcessor]  = None,
+            timeout: int                                    = 10,
+            kwargs: dict                                    = {}
+    ) -> list[models.Packet]:
+        
+        processor,timeout,kwargs, proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=kwargs)
+
+        packets = self.search_stdout(procs=[proc], timeout=timeout, num = x if (x:=kwargs.get("num", None)) is not None else 1, found_call=lambda x: [ i for i in processor.handle(x) if i.DATA != {} ])
+        error  = self.collect_stderr(procs=[proc],  timeout=timeout, num=0)
+
+        for err in error:
+            print(err)
+
+        for pack in packets:
+            print(str(pack))
+
+        self.m_data = packets
+
+    
     def process_capture(
             self,
             processor:  packet_processor.PacketProcessor | \
@@ -497,13 +529,32 @@ class WiFi():
             num: int = None,
             timeout: int = 5
     ):
-
         return self._collect_queue(
             queue=self.m_stdout,
             procs=procs,
             num=num,
             timeout=timeout
         )
+
+    def search_stdout(
+            self,
+            found_call: typing.Callable[..., list],
+            procs: list[mp.Process] = None,
+            num: int = None,
+            timeout: int = 5):
+
+        new = []
+        while not len(new) == num:
+            data = found_call(self._collect_queue(
+                                        queue=self.m_stdout,
+                                        procs=procs,
+                                        num=new,
+                                        timeout=timeout))
+            new += data
+            continue
+    
+        return new[:num]
+        
 
     def collect_stderr(
             self,
