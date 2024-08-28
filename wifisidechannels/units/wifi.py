@@ -55,7 +55,7 @@ class WiFi():
     def _eavesdrop(
             self,
             processor:  packet_processor.PacketProcessor | \
-                    list[packet_processor.PacketProcessor]  = None,
+                    list[packet_processor.PacketProcessor] | None = None,
             timeout: int                                    = 10,
             kwargs: dict                                    = {}
     ) -> list[models.Packet]:
@@ -162,7 +162,7 @@ class WiFi():
     def eavesdrop(
             self,
             processor:  packet_processor.PacketProcessor | \
-                    list[packet_processor.PacketProcessor]  = None,
+                    list[packet_processor.PacketProcessor] | None = None,
             timeout: int                                    = 10,
             kwargs: dict                                    = {}
     ) -> list[models.Packet]:
@@ -190,32 +190,10 @@ class WiFi():
 
         return packets
 
-    def collect_sample(
+    def _process_capture(
             self,
             processor:  packet_processor.PacketProcessor | \
-                    list[packet_processor.PacketProcessor]  = None,
-            timeout: int                                    = 10,
-            kwargs: dict                                    = {}
-    ) -> list[models.Packet]:
-        
-        processor,timeout,kwargs, proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=kwargs)
-
-        packets = self.search_stdout(procs=[proc], timeout=timeout, num = x if (x:=kwargs.get("num", None)) is not None else 1, found_call=lambda x: [ i for i in processor.handle(x) if i.DATA != {} ])
-        error  = self.collect_stderr(procs=[proc],  timeout=timeout, num=0)
-
-        for err in error:
-            print(err)
-
-        for pack in packets:
-            print(str(pack))
-
-        self.m_data = packets
-
-    
-    def process_capture(
-            self,
-            processor:  packet_processor.PacketProcessor | \
-                    list[packet_processor.PacketProcessor]  = None,
+                    list[packet_processor.PacketProcessor] | None = None,
             timeout: int                                    = 10,
             kwargs: dict                                    = {}
     ) -> list[models.Packet]:
@@ -230,6 +208,8 @@ class WiFi():
             Additional kwargs are:
                 filter_fields   : str = string that instructs to apply filter and display certain fields on call to _listen
                 read_file       : str = name of file to read from
+                mac_sa          : str = MAC filtering source
+                mac_da          : str = MAC filtering dest 
         """
 
         if not kwargs.get("read_file"):
@@ -237,12 +217,19 @@ class WiFi():
         print(f"[*] {self.m_name} - Processing capture: {kwargs.get('read_file', '')}")
         if processor is None:
             processor = self.m_processor
+
         if not processor:
             preset = presets.TSHARK_FIELDS_VHT
             if (mac_sa:= kwargs.pop("mac_sa", None)) and isinstance(mac_sa, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
             if (mac_da:= kwargs.pop("mac_da", None))and  isinstance(mac_da, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
+            print(f"\t[*] Using preset: {str(preset)}.")
+
+            processor = packet_processor.PacketProcessor(
+                name=preset.NAME,
+                extractor=preset.extractor()
+            )
 
             kwargs |= (
                 {
@@ -250,13 +237,6 @@ class WiFi():
                 } if not (val:= kwargs.pop("filter_fields", "")) else {
                     "add": str(kwargs.pop("read_file", "")) + " " + val
                 }
-            )
-
-            print(f"\t[*] Using preset: {str(preset)}.")
-
-            processor = packet_processor.PacketProcessor(
-                name=preset.NAME,
-                extractor=preset.extractor()
             )
 
         else:
@@ -273,6 +253,27 @@ class WiFi():
         } if not kwargs.get("timeout") else {}
 
         proc = self.launch_process(function=self._read, kwargs=kwargs)
+
+        return processor,timeout,kwargs,proc
+
+    def process_capture(
+            self,
+            processor:  packet_processor.PacketProcessor | \
+                    list[packet_processor.PacketProcessor] | None = None,
+            timeout: int                                    = 10,
+            kwargs: dict                                    = {}
+    ) -> list[models.Packet]:
+
+        """
+            @PARAM kwargs shall be use to to further configure the NIC and the capture_procedure.
+            kwargs is used to configure and select tasks (processes) to launch. they are mostly directly passed.
+            Additional kwargs are:
+            filter_fields   : str = string that instructs to apply filter and display certain fields on call to _listen
+            read_file       : str = name of file to read from
+            mac_sa          : str = MAC filtering source
+            mac_da          : str = MAC filtering dest
+        """
+        processor,timeout,kwargs,proc =  self._process_capture(processor=processor,timeout=timeout,kwargs=kwargs)
 
         #print(f"Procs after read: {proc} - {self.m_procs}")
         self.procs_alive(procs=[proc])
@@ -298,11 +299,42 @@ class WiFi():
 
         return packets
 
+
+    def collect_sample(
+            self,
+            processor:  packet_processor.PacketProcessor | \
+                    list[packet_processor.PacketProcessor] | None = None,
+            timeout: int                                    = 10,
+            kwargs: dict                                    = {}
+    ) -> list[models.Packet]:
+        """
+        Collect a specific number of packets of a specific kind while packets beeing read from disk or sniffed.
+        @PARAM:
+            num             : Number of packets to sample
+        """
+        num = x if (x:=kwargs.pop("num", None)) is not None else 1
+        #processor,timeout,kwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=kwargs)
+        processor,timeout,kwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=kwargs)
+
+        packets = self.search_stdout(procs=[proc], timeout=timeout, num = num, found_call=lambda x: [ i for i in processor[0].handle(x) if i.DATA != {} ])
+        error  = self.collect_stderr(procs=[proc],  timeout=timeout)
+
+        for err in error:
+            print(err)
+
+        for pack in packets:
+            print(str(pack))
+
+        self.m_data = packets
+        self.clear_queue()
+
+        return self.m_data
+
     # lauches processes for tasks in the form of funtions
     def launch_process(
             self,
             function: typing.Callable,
-            blocking: bool = False,
+            blocking: bool | None = False,
             kwargs: dict = {}
     ) -> mp.Process:
         """Shedules tasks to be handled."""
@@ -326,9 +358,9 @@ class WiFi():
     def _exec(
             self,
             cmd: str,
-            stdin: mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None
     ):
         """
@@ -362,9 +394,9 @@ class WiFi():
     ## by now for each of the followwing tasks is launched in a seperate process. 
     def _listen(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int    = None,
             dry: bool       = False,
             add: str     = ""
@@ -381,9 +413,9 @@ class WiFi():
         
     def _read(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None,
             dry: bool       = False,
             add: str     = ""
@@ -403,9 +435,9 @@ class WiFi():
 
     def _enable_monitor(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None,
             dry: bool    = False, # not needed 
             add: str     = ""
@@ -423,9 +455,9 @@ class WiFi():
 
     def _disable_monitor(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None,
             dry: bool       = False,
             add: str     = ""
@@ -443,9 +475,9 @@ class WiFi():
 
     def _set_frequency(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None,
             dry: bool       = False,
             add: str     = ""
@@ -463,9 +495,9 @@ class WiFi():
 
     def _set_channel(
             self,
-            stdin:  mp.Queue = None,
-            stdout: mp.Queue = None,
-            stderr: mp.Queue = None,
+            stdin = None,
+            stdout = None,
+            stderr = None,
             timeout: int = None,
             dry: bool       = False,
             add: str     = ""
@@ -485,9 +517,9 @@ class WiFi():
     def _collect_queue(
             self,
             queue: mp.Queue,
-            procs: list[mp.Process] = None,
-            num: int = None,
-            timeout: int = None
+            procs: list[mp.Process] | None = None,
+            num: int | None = None,
+            timeout: int | None = None
     ):
 
         if num is None and procs is None:
@@ -548,11 +580,10 @@ class WiFi():
             data = found_call(self._collect_queue(
                                         queue=self.m_stdout,
                                         procs=procs,
-                                        num=new,
+                                        num=num,
                                         timeout=timeout))
             new += data
-            continue
-    
+
         return new[:num]
         
 
@@ -569,11 +600,24 @@ class WiFi():
             num=num,
             timeout=timeout
         )
+    def clear_queue(self) -> bool:
+        try:
+            if self.m_stdin is not None:
+                self.m_stdin.empty()
+            if self.m_stderr is not None:
+                self.m_stderr.empty()
+            if self.m_stdout is not None:
+                self.m_stdout.empty()
+        except Exception as r:
+            print(f"Clear Queue: {r}")
+            return 1
+        return 0
+
 
     # stuff on procs that might have been spawned
     def procs_alive(
             self,
-            procs: list[mp.Process] = None
+            procs: list[mp.Process] | None = None
     ) -> list[mp.Process]:
 
         if procs is None or procs == self.m_procs:
@@ -584,7 +628,7 @@ class WiFi():
 
     def terminate(
             self,
-            procs: list[mp.Process] = None
+            procs: list[mp.Process] | None = None
     ):
         if procs is None:
             procs = self.m_procs
