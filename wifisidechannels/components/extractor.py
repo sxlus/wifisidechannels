@@ -59,15 +59,16 @@ class ColumnExtractor(StringExtractor):
         return super().__str__() + f"[ COMUMN ]: {str(self.COLUMN)} - [ DELIM ]: {hex(ord(self.DELIM))}"
 
     def apply(self, packet: models.Packet) -> dict:
-        raw = [
-            x.strip() for x in (packet.RAW.decode("utf-8").strip() \
-                                if isinstance(packet.RAW, bytes) \
-                                    else str(packet.RAW.strip())).split(self.DELIM)
-        ]
+        raw = (packet.RAW.decode("utf-8") \
+                    if isinstance(packet.RAW, bytes) \
+                        else str(packet.RAW)
+                            ).strip().split(self.DELIM)
+        self.RAW = raw
+        #print("COL: ", str(raw[self.COLUMN]))
         return {
-                self.KEY: raw[self.COLUMN]
-            } if len(raw) > self.COLUMN else {
-                self.KEY: ""
+                self.KEY: raw[self.COLUMN] 
+            } if len(raw) > self.COLUMN and raw[self.COLUMN] else {
+                #self.KEY: ""
             }
 
 class FieldExtractor(Extractor):

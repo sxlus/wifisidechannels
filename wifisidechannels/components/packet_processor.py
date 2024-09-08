@@ -42,10 +42,7 @@ class PacketProcessor():
     def __str__(self):
         s = f"PacketProcessor: {len(self.m_data)} Packets available.\n"
         for pac in self.m_data[-20:]:
-            row = ""
-            for key in pac:
-                row += f"{key: >20} : {pac.get(key, ''): >30}"
-            s += row + "\n"             
+            s += str(pac) + "\n"
         return s
 
     def __len__(self):
@@ -58,7 +55,13 @@ class PacketProcessor():
             extract: extractor.Extractor | list[extractor.Extractor] | None = None
     ) -> list[models.Packet]:
 
+        #print("RAW:")
+        #for x in raw:
+        #    print(str(x))
         todo = self.add_todo(raw=raw, name=name)
+        #print("TODO: ")
+        #for x in todo:
+        #    print(str(x))
         return self.extract(todo=todo, extract=extract)
 
     def add_todo(
@@ -69,14 +72,16 @@ class PacketProcessor():
         """Take array of raw data and add to todo"""
         data = []
         for entry in raw:
-            now = datetime.datetime.now()
-            data.append(models.Packet(
-                **{
-                    "NAME": self.m_name if not name else name,
-                    "TIME": now,
-                    "RAW" : entry
-                }
-        ))
+            entry = (entry.decode("utf-8") if isinstance(entry, bytes) else entry).strip()
+            if entry != "":
+                now = datetime.datetime.now()
+                data.append(models.Packet(
+                    **{
+                        "NAME": self.m_name if not name else name,
+                        "TIME": now,
+                        "RAW" : entry
+                    }
+                ))
         self.m_todo += data
         return self.m_todo
 
@@ -97,11 +102,12 @@ class PacketProcessor():
             a: dict,
             b: dict
     ) -> dict:
+        return a | b
         out = {}
         for k in [ x for x in a.keys() if x not in b.keys()]:
             out[k] = a[k]
         for k in [ x for x in a.keys() if x in b.keys()]:
-            out[k] = list(set(a[k] + [b[k]])) if type(a[k]) == list and type(b[k]) != list else \
+            out[k] = list(set(a[k] + b[k])) if type(a[k]) == list and type(b[k]) != list else \
                     list(set([a[k]] + b[k])) if type(a[k]) != list and type(b[k]) == list else \
                     list(set(a[k] + b[k])) if type(a[k]) == list and type(b[k]) == list else  \
                     list(set([a[k]] + [b[k]]))
@@ -119,11 +125,12 @@ class PacketProcessor():
         todo        = self.m_todo       if todo is None     else [ todo ]       if isinstance(todo, models.Packet)          else todo
         extract     = self.m_extractor  if extract is None  else [ extract ]    if isinstance(extract, extractor.Extractor) else extract
         data: list[models.Packet] = []
-        print(f"{self.m_name}[ INFO ] - extracting {len(todo)} Packets.")
-        print(f"{self.m_name}[ INFO ] - using {len(extract)} Extractor.")
-        for ex in extract:
-            print("\t" + f"{str(ex)}")
-
+        #print(f"{self.m_name}[ INFO ] - extracting {len(todo)} Packets.")
+        #print(f"{self.m_name}[ INFO ] - using {len(extract)} Extractor.")
+        #for ex in extract:
+        #    print("\t" + f"{str(ex)}")
+        if todo == []:
+            return []
         for pack in tqdm.tqdm(todo):
             pack.NAME = self.m_name if not pack.NAME else pack.NAME
             pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack, extract=extract))
@@ -151,6 +158,7 @@ class PacketProcessor():
             self,
             data: list[models.Packet]
     ):
+        data = [ x for x in data if x.DATA != {} and x.RAW != []]
         if len(self.m_data) > self.m_max_keep:
             print(f"{self.m_name}[ INFO ]: save - len(data) > max_keep. Keeping last max_keep samples.")
             self.m_data = data[self.m_max_keep:]

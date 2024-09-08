@@ -25,6 +25,8 @@ class WiFi():
 
     m_plotter   : plotter.Plotter                   = plotter.Plotter()
 
+
+    m_data      : list                              = []
     ## bash script for NIC handling
     m_set_up    : pathlib.Path
 
@@ -47,7 +49,7 @@ class WiFi():
                 else kwargs.get("processor") if isinstance(kwargs.get("processor"), list) else []
         self.m_plotter  = kwargs.get("plotter") if kwargs.get("plotter") else self.m_plotter
         # ???? data again
-        self.m_data     = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else {}
+        self.m_data     = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else []
 
         self.m_set_up   = pathlib.Path(os.path.join("bash/setup_device.sh")) if \
                            not kwargs.get("set_up", "") else kwargs.get("set_up", "")
@@ -149,7 +151,7 @@ class WiFi():
         proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=True if write_file else False)
         time.sleep(1)
         self.procs_alive(procs=[proc])
-        #print(f"Procs after listen: {proc} - {self.m_procs}")
+        print(f"Procs after listen: {proc} - {self.m_procs}")
 
         if write_file:
             kwargs |= {
@@ -312,23 +314,23 @@ class WiFi():
         @PARAM:
             num             : Number of packets to sample
         """
-        num = x if (x:=kwargs.pop("num", None)) is not None else 1
-        #processor,timeout,kwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=kwargs)
-        processor,timeout,kwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=kwargs)
-
+        num = x if (x:=kwargs.get("num", None)) is not None else 1
+        nkwargs = kwargs.copy()
+        nkwargs.pop("num", None)
+        processor,timeout,kwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=nkwargs)
+        #processor,timeout,kwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=kwargs)
+        #print("PROCESSOR: ", str(processor[0]))
         packets = self.search_stdout(procs=[proc], timeout=timeout, num = num, found_call=lambda x: [ i for i in processor[0].handle(x) if i.DATA != {} ])
+        self.terminate(procs=[proc])
         error  = self.collect_stderr(procs=[proc],  timeout=timeout)
+        #print("PROCESSOR: ", str(processor[0]))
 
         for err in error:
             print(err)
 
-        for pack in packets:
-            print(str(pack))
-
-        self.m_data = packets
+        self.m_data += packets
         self.clear_queue()
-
-        return self.m_data
+        return packets
 
     # lauches processes for tasks in the form of funtions
     def launch_process(
@@ -520,7 +522,7 @@ class WiFi():
             procs: list[mp.Process] | None = None,
             num: int | None = None,
             timeout: int | None = None
-    ):
+    ) -> list:
 
         if num is None and procs is None:
             print(f"[WARN]: collect_queue - Amount to read an procs to care about not specified usind ALL!")
@@ -531,7 +533,7 @@ class WiFi():
         try:
             if num:
                 i = 0
-                while i < num:
+                while i < num and any(self.procs_alive(procs=procs)) and not queue.empty():
                     try:
                         data.append(queue.get(
                             block=False,
@@ -572,17 +574,24 @@ class WiFi():
             self,
             found_call: typing.Callable[..., list],
             procs: list[mp.Process] = None,
-            num: int = None,
+            num: int = 1,
             timeout: int = 5):
 
         new = []
-        while not len(new) == num:
+        if num <= 0:
+            return []
+        print("NUM:", num)
+        while (len(new) < num) and self.procs_alive(procs=procs):
             data = found_call(self._collect_queue(
                                         queue=self.m_stdout,
                                         procs=procs,
-                                        num=num,
+                                        num=1,
                                         timeout=timeout))
+            #for x in data:
+            #    print("NEW : ", str(x))
             new += data
+            #print("DATA found so far: ", len(new))
+
 
         return new[:num]
         
