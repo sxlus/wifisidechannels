@@ -258,6 +258,8 @@ class FastdriverController:
 
     def go_until(self, board, speed, action, direction):
         self.send_command('GO_UNTIL', board, speed, self.go_until_mode[action], self.direction[direction])
+        while not self.is_switch_pressed(board):
+            time.sleep(0.5)
 
     def move(self, board, steps, direction, fs_only=True):
         if fs_only:
@@ -281,7 +283,7 @@ class FastdriverController:
 
     def is_switch_pressed(self, selected_motor):
         status = self.get_status(selected_motor)
-        return not (status[0] & 0x04)  # True means switch is open
+        return (status[0] in [32274, 32278])  # True means switch is open
 
     def __del__(self):
         self.stop_motors_hard()

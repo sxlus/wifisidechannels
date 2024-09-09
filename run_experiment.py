@@ -56,7 +56,7 @@ ACTIONS = [
                 "num": 2,
                 "mac_sa": "d8:3a:dd:e5:66:2c",
                 "mac_da": "127c6136fcc2",
-                "channel": 64
+                "channel": 44
             }
         }
     ),

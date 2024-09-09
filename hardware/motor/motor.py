@@ -32,22 +32,28 @@ class Motor:
         'stop_at_end': False,
 }
 
-    m_sensors   : sensor.Sensor = None
-    m_total_steps :int = 0
+    m_sensors:      sensor.Sensor = None
+    m_total_steps:  int = 0
+    m_speed_set:    int = 1000
+    m_speed_home:   int = 500
+
     def __init__(
             self,
             motor_params: dict = {},
             motor_settings: dict = {},
-            sensors: sensor.Sensor | None = None):
+            sensors: sensor.Sensor | None = None,
+            speed_home: int | None = None):
         self.m_motor_params["motor_settings"] |= motor_settings
         self.m_motor_params |= motor_params
         self.m_driver = fastdriver.FastdriverController(**(self.m_motor_params))
         self.m_sensors = sensors
+        self.m_speed_set = x if (x:= motor_settings.get("MAX_SPEED", None)) is not None else self.m_speed_set
+        self.m_speed_home = speed_home if speed_home is not None else self.m_speed_home
 
     def drive(
             self,
             direction: Direction = Direction.FWD,
-            speed: int = 100,
+            speed: int | None = None,
             steps: int | None = None,
             delta: datetime.timedelta | None = None,
             motor_id: int | None = None,
@@ -57,6 +63,11 @@ class Motor:
             motor_id = range(motor_id, motor_id+1)
         else:
             motor_id = range(self.m_motor_params.get("num_motors", 1))
+        if speed is None:
+            speed = self.m_motor_params["motor_settings"].get("MAX_SPEED")
+        if speed is None:
+            print(f"[ MOTOR ][ DRIVE ][ ERROR ]: speed not set.")
+            return False
         try:        
             if isinstance(steps, int):
                 for i in motor_id:
@@ -106,12 +117,16 @@ class Motor:
     def reset(
             self,
             direction: Direction = Direction.BWD,
-            speed: int = 100,
+            speed: int | None = None,
             steps: int | None = None,
             delta: datetime.timedelta | None = None,
             motor_id: int | None = None,
-            fs_only: bool = False
+            fs_only: bool = False,
+            go_until: bool = False,
     ) -> bool:
+
+        if speed is None:
+            speed = self.m_speed_home
 
         return self.drive(
             direction=direction,
@@ -120,5 +135,11 @@ class Motor:
             delta=delta,
             motor_id=motor_id,
             fs_only=fs_only
-        )
+        ) if not go_until else True if \
+            self.m_driver.go_until(
+                board=motor_id if motor_id is not None else 0,
+                speed=speed,
+                action="reset_abspos",
+                direction=direction.value
+            ) == None else False
 

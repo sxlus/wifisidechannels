@@ -9,6 +9,8 @@ import multiprocessing as mp
 import threading as td
 import shlex
 import typing
+import joblib
+import datetime 
 
 class WiFi():
 
@@ -119,7 +121,12 @@ class WiFi():
                 name=preset.NAME,
                 extractor=preset.extractor()
             )
+            self.m_processor.append(processor)
         else:
+            # not used
+            mac_sa = kwargs.pop("mac_sa")
+            mac_da = kwargs.pop("mac_da")
+
             kwargs |= (
                 {
                     "add": " -w " + str(write_file)
@@ -131,22 +138,24 @@ class WiFi():
         if isinstance(processor, packet_processor.PacketProcessor):
             processor = [ processor ]
 
-        self.launch_process(function=self._enable_monitor, blocking=True)
+        #self.launch_process(function=self._enable_monitor, blocking=True)
 
         kwargs |= {
             "timeout": timeout
         } if not kwargs.get("timeout") else {}
-
+        
         if (channel:= kwargs.pop("channel", "")):
-            kw = kwargs | ({
-                "add": channel
-            })
-            self.launch_process(function=self._set_channel, kwargs=kw, blocking=True)
+            pass
+        #    kw = kwargs | ({
+        #        "add": channel
+        #    })
+        #    self.launch_process(function=self._set_channel, kwargs=kw, blocking=True)
         if (frequency:= kwargs.pop("frequency", "")):
-            kw = kwargs | ({
-                "add": frequency
-            })
-            self.launch_process(function=self._set_frequency, kwargs=kw, blocking=True)
+            pass
+        #    kw = kwargs | ({
+        #        "add": frequency
+        #    })
+        #    self.launch_process(function=self._set_frequency, kwargs=kw, blocking=True)
 
         proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=True if write_file else False)
         time.sleep(1)
@@ -645,5 +654,45 @@ class WiFi():
             x.terminate()
 
     # will want to save data in parsed form. Here very basic.
-    def store(self):
-        pass
+    def store(
+            self,
+            data: typing.Iterable[models.Packet] | None = None,
+            write_file: pathlib.Path | str | None = "test",
+            meta_info: dict = {},
+    ) -> bool:
+        """
+        Stores Packages.
+        """
+        now = datetime.datetime.now()
+        now_str = datetime.datetime.strftime(now, "%y_%m_%d-%H_%M_%S")
+        reset = False
+
+        if data is None:
+            data = self.m_data
+            reset = True
+    
+        if not data:
+            print(f"{self.m_name}[ STORE ][ ERROR ]: No data to save!")
+            return True
+
+        if isinstance(write_file, str):
+            write_file = pathlib.Path(write_file)
+        elif write_file is None:
+            write_file = pathlib.Path(now_str)
+
+        if not isinstance(write_file, pathlib.Path):
+            print(f"{self.m_name}[ STORE ][ ERROR ]: write_file should be path or string, is {type(write_file)} - {str(write_file)}.")
+            return False
+        
+        if not isinstance(meta_info, dict):
+            print(f"{self.m_name}[ STORE ][ ERROR ]: meta_info should be dict, is {type(meta_info)} - {str(meta_info)}.")
+            return False
+        
+        
+        joblib.dump(data,       pathlib.Path( os.path.join(write_file.parents, str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_data") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes))))
+        joblib.dump(meta_info,  pathlib.Path( os.path.join(write_file.parents, str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_meta") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes))))
+        
+        if reset:
+            self.m_data = []
+
+        return True
