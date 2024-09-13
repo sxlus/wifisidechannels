@@ -1,6 +1,7 @@
 import pathlib, typing, datetime, tqdm
 
 import wifisidechannels.models.models as models
+import wifisidechannels.models.presets as presets
 import wifisidechannels.components.extractor as extractor
 
 class PacketProcessor():
@@ -18,6 +19,8 @@ class PacketProcessor():
 
     # OUT
     m_data          : list[models.Packet]           = []
+
+    m_preset        : presets.TsharkDisplayConfig | None  = None
 
     def __init__(
             self,
@@ -38,6 +41,8 @@ class PacketProcessor():
             kwargs.get("todo")
             ] if isinstance(kwargs.get("todo"), models.Packet) else kwargs.get("todo") \
                 if isinstance(kwargs.get("todo"), list) else []
+        self.m_preset         = kwargs.get("preset") \
+            if isinstance(kwargs.get("preset"), presets.TsharkDisplayConfig) else None
 
     def __str__(self):
         s = f"PacketProcessor: {len(self.m_data)} Packets available.\n"
@@ -62,7 +67,12 @@ class PacketProcessor():
         #print("TODO: ")
         #for x in todo:
         #    print(str(x))
-        return self.extract(todo=todo, extract=extract)
+        #return self.extract(todo=todo, extract=extract)
+        
+        pac = self.extract(todo=todo, extract=extract)
+        self.m_todo = []
+        self.m_data = []
+        return pac 
 
     def add_todo(
             self,
@@ -135,8 +145,8 @@ class PacketProcessor():
             pack.NAME = self.m_name if not pack.NAME else pack.NAME
             pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack, extract=extract))
             data.append(pack)
-
-        return self.save(data)
+            #print(str(pack))
+        return [ x for x in data if all( [ True if ex.KEY in x.DATA.keys() else False for ex in extract ] ) ]
 
     def parse(
             self,

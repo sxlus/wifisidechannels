@@ -27,9 +27,11 @@ class FastdriverController:
 
     def __init__(self, **kwargs):
         from pySerialTransfer import pySerialTransfer as txfer
-        self.link = txfer.SerialTransfer(kwargs['com_port'], baud=kwargs['baud_rate'])
-        self.link.open()
-        time.sleep(0.75)  # allow some time for the Arduino to completely reset
+
+        if (dry:= kwargs.pop("dry", None)) is None:
+            self.link = txfer.SerialTransfer(kwargs['com_port'], baud=kwargs['baud_rate'])
+            self.link.open()
+            time.sleep(0.75)  # allow some time for the Arduino to completely reset
 
         self.challenge_minimum_position = kwargs.get('challenge_minimum_position', 0)
         self.challenge_maximum_position = kwargs.get('challenge_maximum_position', 0)
@@ -101,7 +103,8 @@ class FastdriverController:
 
         # INITIALIZE BOARDS
         self.motor_settings = kwargs['motor_settings']
-        self.set_board_parameter(**self.motor_settings)
+        if dry is None:
+            self.set_board_parameter(**self.motor_settings)
         #self.home(self.ALL_BOARDS)
 
     def set_board_parameter(self, **kwargs):
@@ -259,7 +262,7 @@ class FastdriverController:
     def go_until(self, board, speed, action, direction):
         self.send_command('GO_UNTIL', board, speed, self.go_until_mode[action], self.direction[direction])
         while not self.is_switch_pressed(board):
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     def move(self, board, steps, direction, fs_only=True):
         if fs_only:
@@ -283,7 +286,7 @@ class FastdriverController:
 
     def is_switch_pressed(self, selected_motor):
         status = self.get_status(selected_motor)
-        return (status[0] in [32274, 32278])  # True means switch is open
+        return (status[0] in [32274, 32278, 32282])  # True means switch is open
 
     def __del__(self):
         self.stop_motors_hard()

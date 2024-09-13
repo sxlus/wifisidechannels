@@ -70,14 +70,19 @@ class Motor:
             return False
         try:        
             if isinstance(steps, int):
-                for i in motor_id:
+                for id in motor_id:
                     print("* Driving steps:", steps)
-                    self.m_driver.move(i, steps, direction.value, fs_only=fs_only)
+                    self.m_driver.move(id, steps, direction.value, fs_only=fs_only)
                     self.m_total_steps = (self.m_total_steps - steps) if (direction == Direction.BWD) else (self.m_total_steps + steps)
                     print("--- ", self.m_total_steps)
+                    if delta is not None:
+                        time.sleep(delta.total_seconds())
+                    else:
+                        while self.check_moving(motor_id=id):
+                            time.sleep(0.1)
             else:
-                for i in motor_id:
-                    self.m_driver.start_rotate(i, direction.value, speed)
+                for id in motor_id:
+                    self.m_driver.start_rotate(id, direction.value, speed)
                     if delta is not None:
                         time.sleep(delta.total_seconds())
                         self.stop()
@@ -114,6 +119,10 @@ class Motor:
             return True
         return False
 
+    def check_moving(self, motor_id: int | None = None):
+        #print(self.m_driver.get_status(motor_id if motor_id is not None else 0)[0])
+        return True if self.m_driver.get_status(motor_id if motor_id is not None else 0)[0] not in [32266, 32274, 32278, 32282, 32258, 32286] else False
+
     def reset(
             self,
             direction: Direction = Direction.BWD,
@@ -127,19 +136,22 @@ class Motor:
 
         if speed is None:
             speed = self.m_speed_home
-
-        return self.drive(
-            direction=direction,
-            speed=speed,
-            steps=steps,
-            delta=delta,
-            motor_id=motor_id,
-            fs_only=fs_only
-        ) if not go_until else True if \
+        if not go_until:
+            return self.drive(
+                direction=direction,
+                speed=speed,
+                steps=steps,
+                delta=delta,
+                motor_id=motor_id,
+                fs_only=fs_only
+            )
+        else:
             self.m_driver.go_until(
                 board=motor_id if motor_id is not None else 0,
                 speed=speed,
                 action="reset_abspos",
                 direction=direction.value
-            ) == None else False
+            )
+            self.m_total_steps = 0
+            return True
 

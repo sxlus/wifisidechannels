@@ -20,3 +20,4 @@ bash/interact_STA.sh
 test.ipynb
 pictures/*/*.dat
 TEST_BFI/
+EXPERIMENT/*

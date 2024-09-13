@@ -17,7 +17,7 @@ class Packet:
         self.RAW    = kwargs.get("RAW"  , "")
         self.DATA   = kwargs.get("DATA" , {})
     def __str__(self) -> str:
-        return f"[ Packet ]: {self.NAME} from {self.TIME} with content:\n{str(self.RAW)} @\n{str(self.DATA)}"
+        return f"[ Packet ]: {self.NAME} from {self.TIME} @\n{str(self.DATA)}"
 
 class TsharkDisplayFilter(enum.Enum):
 

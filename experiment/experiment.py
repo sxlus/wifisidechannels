@@ -2,9 +2,10 @@ import typing
 import datetime
 import time
 import pathlib
+import os
 
+from wifisidechannels.models.models import Packet
 from experiment.action import Action
-
 from hardware.motor.motor import Motor, Direction
 from meassure.meassure import Meassure
 
@@ -61,6 +62,7 @@ class Experiment:
             actions=self.m_actions_reset,
             stop_callback=stop_callback
         )
+        
 
 
 
@@ -77,6 +79,7 @@ class NumericalPasswordSCExperiment(Experiment):
     m_password_file: pathlib.Path | str
     m_passwords: list = []
     m_next_pw_idx: int = 0
+    m_current_pw: str = ""
 
     def __init__(
             self,
@@ -125,8 +128,13 @@ class NumericalPasswordSCExperiment(Experiment):
             meassure: Meassure,
             password: str | None = None,
             idx: int | None = None,
+            number_of_chunks: int | None = None,
+            from_idy: int | None = None,
+            v: bool = False
     ) -> list[list[Action], list[Action]] | None:
 
+        if number_of_chunks is None:
+            number_of_chunks = 1
         if idx is None:
             if len(self.m_passwords) == 0:
                 print(f"[ EXPERIMENT ][ CREATE ACTIONS ][ ERROR ]: Passwords are empty! Read them first!")
@@ -145,6 +153,7 @@ class NumericalPasswordSCExperiment(Experiment):
                 print(f"[ EXPERIMENT ][ CREATE ACTIONS ][ ERROR ]: Need password or index.")
                 return None
         
+        self.m_current_pw   = password
         step_per_number     = self.m_max_steps // self.m_max_positions
         delta_per_number    = (step_per_number / motor.m_speed_set)
         #print("DELTA PER NUMBER: ", delta_per_number)
@@ -154,7 +163,7 @@ class NumericalPasswordSCExperiment(Experiment):
         password_split      = [int(x, 10) for x in list(password)]
         reset               = Action(
                 name=f"MOTOR_RESET_GO_UNTIL",
-                obj=motor.reset,
+                obj=motor.reset,#lambda **kwargs: True, #
                 kwargs={
                     "direction": Direction.BWD,
                     "speed": motor.m_speed_home,
@@ -162,7 +171,7 @@ class NumericalPasswordSCExperiment(Experiment):
                 }
             )
         ACTIONS             = [
-            reset
+            #reset
         ]
         RESET_ACTIONS       = [
             reset
@@ -171,11 +180,11 @@ class NumericalPasswordSCExperiment(Experiment):
         # random start position ?
 
         for idy in range(len(password_split)):
-
-            if idy > 0:
-                from_idy = password_split[idy-1]
-            else:
-                from_idy = 0
+            if from_idy is None:
+                if idy > 0:
+                    from_idy = password_split[idy-1]
+                else:
+                    from_idy = [int(x, 10) for x in list(self.m_passwords[idx-1])][-1] if idx > 0 else 0
 
             to_idy = password_split[idy]
             if from_idy < to_idy:
@@ -187,32 +196,55 @@ class NumericalPasswordSCExperiment(Experiment):
                 step = diff_idy*step_per_number
                 direction = Direction.BWD
 
-            ACTIONS += [
-                Action(
-                    name=f"MOTOR_STEP_FROM_{str(from_idy)}_TO_{to_idy}",
-                    obj=motor.drive,
-                    kwargs={
-                        "direction": direction,
-                        "steps": step,
-                        "fs_only": False
-                    },
-                    delta=datetime.timedelta(seconds=(diff_idy*delta_per_number) + 1)
-                ),
-                Action(
-                    name="MEASSURE",
-                    obj=meassure.do,
-                    kwargs={}
-                ),
-            ]
-
+            if idy > 0:
+                rest = step % number_of_chunks
+                chunk_step = step // number_of_chunks
+                for chunk in range(1, number_of_chunks+1):
+                    ACTIONS += [
+                        Action(
+                            name=f"MOTOR_STEP_FROM_{str(from_idy)}_TO_{to_idy}_CHUNK_{chunk}/{number_of_chunks}",
+                            obj=motor.drive,#lambda **kwargs: True, 
+                            kwargs={
+                                "direction": direction,
+                                "steps": chunk_step + (rest if chunk == number_of_chunks else 0),
+                                "fs_only": False
+                            },
+                            #delta=datetime.timedelta(seconds=((diff_idy*delta_per_number)/number_of_chunks) + (1 if (diff_idy > 0) else 0))#0)
+                        ),
+                        Action(
+                            name="MEASSURE",
+                            obj=meassure.do,
+                            kwargs={}
+                        ),
+                    ]
+            else:
+                ACTIONS += [
+                    Action(
+                        name=f"MOTOR_STEP_FROM_{str(from_idy)}_TO_{to_idy}",
+                        obj=motor.drive,#lambda **kwargs: True,
+                        kwargs={
+                            "direction": direction,
+                            "steps": step,
+                            "fs_only": False
+                        },
+                        #delta=datetime.timedelta(seconds=(diff_idy*delta_per_number) + (1 if (diff_idy > 0) else 0))#0)#
+                    ),
+                    Action(
+                        name="MEASSURE",
+                        obj=meassure.do,
+                        kwargs={}
+                    ),
+                ]
+            from_idy = None
         # might use absolut position to determine steps required to go home, or motor.go_until to use halll sensor
 
 
-        for act in ACTIONS:
-            print(str(act))
+        if v:
+            for act in ACTIONS:
+                print(str(act))
 
-        for act in RESET_ACTIONS:
-            print(str(act))
+            #for act in RESET_ACTIONS:
+            #    print(str(act))
 
         self.m_actions          = ACTIONS
         self.m_actions_reset    = RESET_ACTIONS
@@ -237,8 +269,44 @@ class NumericalPasswordSCExperiment(Experiment):
         return True
 
     def reset(
-            self
+            self,
+            meassure: Meassure | None = None,
     ) -> bool:
+
+        if isinstance(meassure, Meassure):
+            self.m_next_pw_idx = self.m_next_pw_idx-1
+            meassure.m_unit.m_data = []
+            for processor in meassure.m_unit.m_processor:
+                processor.m_data = []
+                processor.m_todo = []
         return self.run(
             actions=self.m_actions_reset
         )
+
+    def store(
+        self,
+        meassure: Meassure,
+        write_file: pathlib.Path | str | None = "test",
+        meta_info: dict = {},
+    ) -> bool:
+
+        if isinstance(write_file, str):
+            write_file = pathlib.Path(write_file)
+        if write_file is None:
+            write_file = pathlib.Path("")
+        try:
+            meassure.process_and_store(
+                write_file= pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_" + str(self.m_current_pw) + "".join(write_file.suffixes))),
+                meta_info=meta_info | {
+                    "max_steps":        self.m_max_steps,
+                    "max_positions":    self.m_max_positions,
+                    "password_file":    self.m_password_file,
+                    "current_pw":       self.m_current_pw,
+                }
+            )
+        except Exception as r:
+            print(f"[ EXPERIMENT ][ ERROR ] Cant store data. State unsave. {r}")
+            return False
+        finally:
+            meassure.m_unit.m_data = []
+        return True

@@ -6,7 +6,6 @@ import wifisidechannels.models.presets as presets
 
 import subprocess, pathlib, os, time
 import multiprocessing as mp
-import threading as td
 import shlex
 import typing
 import joblib
@@ -103,7 +102,7 @@ class WiFi():
             preset = presets.TSHARK_FIELDS_VHT
             if (mac_sa:= kwargs.pop("mac_sa", None)) and isinstance(mac_sa, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
-            if (mac_da:= kwargs.pop("mac_da", None))and  isinstance(mac_da, str):
+            if (mac_da:= kwargs.pop("mac_da", None)) and  isinstance(mac_da, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
 
             print(f"\t[*] Using preset: {str(preset)}.")
@@ -119,7 +118,8 @@ class WiFi():
             )
             processor = packet_processor.PacketProcessor(
                 name=preset.NAME,
-                extractor=preset.extractor()
+                extractor=preset.extractor(),
+                preset = preset
             )
             self.m_processor.append(processor)
         else:
@@ -131,7 +131,9 @@ class WiFi():
                 {
                     "add": " -w " + str(write_file)
                 } if not filter_fields and write_file else {
-                    "add": str(filter_fields) + " "
+                    "add": str(filter_fields) + " " } if filter_fields else \
+                {    
+                    "add": str(processor[0].m_preset) if processor[0].m_preset is not None else {}
                 }
             )
 
@@ -157,8 +159,8 @@ class WiFi():
         #    })
         #    self.launch_process(function=self._set_frequency, kwargs=kw, blocking=True)
 
-        proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=True if write_file else False)
-        time.sleep(1)
+        proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=False)# True if write_file else False)
+        time.sleep(0.5)
         self.procs_alive(procs=[proc])
         print(f"Procs after listen: {proc} - {self.m_procs}")
 
@@ -233,13 +235,14 @@ class WiFi():
             preset = presets.TSHARK_FIELDS_VHT
             if (mac_sa:= kwargs.pop("mac_sa", None)) and isinstance(mac_sa, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_SA.value, preset.vrfy_mac(mac_sa))
-            if (mac_da:= kwargs.pop("mac_da", None))and  isinstance(mac_da, str):
+            if (mac_da:= kwargs.pop("mac_da", None)) and  isinstance(mac_da, str):
                 preset.add_filter(models.TsharkDisplayFilter.MAC_DA.value, preset.vrfy_mac(mac_da))
             print(f"\t[*] Using preset: {str(preset)}.")
 
             processor = packet_processor.PacketProcessor(
                 name=preset.NAME,
-                extractor=preset.extractor()
+                extractor=preset.extractor(),
+                preset=preset
             )
 
             kwargs |= (
@@ -251,9 +254,13 @@ class WiFi():
             )
 
         else:
+            mac_sa = kwargs.pop("mac_sa", None)
+            mac_da = kwargs.pop("mac_da", None)
+
             kwargs |= (
                 {
-                    "add": str(kwargs.pop("read_file", "")) + (" " + val if (val:= kwargs.pop("filter_fields", "")) else "") 
+                    "add": str(kwargs.pop("read_file", "")) + (" " + val if (val:= kwargs.pop("filter_fields", "")) else "") \
+                        + (" " + val if ( val := str(processor[0].m_preset) ) is not str(None) else "" )
                 }
             )
         if isinstance(processor, packet_processor.PacketProcessor):
@@ -264,7 +271,7 @@ class WiFi():
         } if not kwargs.get("timeout") else {}
 
         proc = self.launch_process(function=self._read, kwargs=kwargs)
-
+        self.m_processor = processor
         return processor,timeout,kwargs,proc
 
     def process_capture(
@@ -323,22 +330,41 @@ class WiFi():
         @PARAM:
             num             : Number of packets to sample
         """
+        print(f"######## TIMEOUT: {timeout}")
         num = x if (x:=kwargs.get("num", None)) is not None else 1
         nkwargs = kwargs.copy()
         nkwargs.pop("num", None)
-        processor,timeout,kwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=nkwargs)
-        #processor,timeout,kwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=kwargs)
-        #print("PROCESSOR: ", str(processor[0]))
-        packets = self.search_stdout(procs=[proc], timeout=timeout, num = num, found_call=lambda x: [ i for i in processor[0].handle(x) if i.DATA != {} ])
-        self.terminate(procs=[proc])
-        error  = self.collect_stderr(procs=[proc],  timeout=timeout)
-        #print("PROCESSOR: ", str(processor[0]))
+        
+        # collect live sample & evaluate concurrently
 
+        #print(f"NUM: ", num)
+        nkwargs.pop("read_file", None)
+        processor,timeout,fkwargs,proc = self._eavesdrop(processor=processor,timeout=timeout,kwargs=nkwargs)
+        
+        # Do the same, but read from file
+
+        #channel = nkwargs.pop("channel", None)
+        #processor,timeout,nkwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=nkwargs)
+        
+        packets = self.search_stdout(procs=[proc], producer_timeout=timeout, num = num, found_call=lambda x: processor[0].handle(x))
+        self.terminate(procs=[proc])
+
+        print("## PROCS ALIVE: ", self.procs_alive(procs=[proc]))
+
+        error  = self.collect_stderr(procs=[proc],  timeout=timeout)
         for err in error:
             print(err)
 
-        self.m_data += packets
         self.clear_queue()
+
+        if packets is None:
+            print(f"{self.m_name}[ ERROR ] Did not collect enough samples. Recursive retry...")
+            packets = self.collect_sample(
+                kwargs=kwargs,
+                timeout=timeout
+            )
+
+        self.m_data += packets
         return packets
 
     # lauches processes for tasks in the form of funtions
@@ -372,7 +398,7 @@ class WiFi():
             stdin = None,
             stdout = None,
             stderr = None,
-            timeout: int = None
+            timeout: int | None = None
     ):
         """
         Does the 'heavy' lifting of dealing with Popen and collecting the outs in the desired queues.
@@ -394,12 +420,16 @@ class WiFi():
             stderr=subprocess.PIPE) as proc:
             if stdout:
                 for line in proc.stdout:
-                    #rint(line)
-                    stdout.put(line)
+                    #print(f"EXEC: WAITING ON LOCK")
+                    print(line)
+                    stdout.put(line, block=False)
+                    #print(f"EXEC: RELEASED LOCK")
+                    print(stdout.empty(), stdout.full())
+
             if stderr:
                 for line in proc.stderr:
                     #print(line)
-                    stderr.put(line)
+                    stderr.put(line, block=False)
 
     # common usecases for _exec
     ## by now for each of the followwing tasks is launched in a seperate process. 
@@ -533,44 +563,49 @@ class WiFi():
             timeout: int | None = None
     ) -> list:
 
+        #print(procs, procs[0].is_alive())
         if num is None and procs is None:
-            print(f"[WARN]: collect_queue - Amount to read an procs to care about not specified usind ALL!")
+            print(f"[WARN]: collect_queue - Amount to read and procs to care about not specified usind ALL!")
             procs = self.m_procs
         if not isinstance(procs, list):
             procs = [ procs ]
         data = []
+
         try:
             if num:
-                i = 0
-                while i < num and any(self.procs_alive(procs=procs)) and not queue.empty():
+                #print(f"DOING NUM. {num}")
+                while ((len(data) < num)) and not queue.empty() and any(self.procs_alive(procs=procs)):
                     try:
+                        #print(procs, procs[0].is_alive())
                         data.append(queue.get(
-                            block=False,
-                            timeout=timeout))
-                        i+=1
+                                block=False))
                     except Exception as r:
-                        print(r, end="\r")
+                        print("ERROR", r)
                         time.sleep(1)
+                #print("FINISHED DOING NUM.")
             else:
+                #print("NOT DOING NUM.")
                 while any(self.procs_alive(procs=procs)):
                     try:
                         data.append(queue.get(
-                            block=False,
-                            timeout=timeout))
+                            block=False))
                     except Exception as r:
-                        print(r, end="\r")
+                        print(r, end="")
                         time.sleep(1)
                 while not queue.empty():
-                    data.append(queue.get(block=False, timeout=timeout))
+                    data.append(queue.get(block=False))
         except KeyboardInterrupt:
-            self.terminate()
+            self.terminate(procs=procs)
+        
+        #print(f"EXIT COLLECT QUEUE: {queue.empty()} - {self.procs_alive(procs=procs)}")
+        #print(f"COLLECTED DATA: {data}")
         return data
 
     def collect_stdout(
             self,
             procs: list[mp.Process] = None,
             num: int = None,
-            timeout: int = 5
+            timeout: int = 1
     ):
         return self._collect_queue(
             queue=self.m_stdout,
@@ -584,24 +619,29 @@ class WiFi():
             found_call: typing.Callable[..., list],
             procs: list[mp.Process] = None,
             num: int = 1,
-            timeout: int = 5):
-
+            producer_timeout: int = 1
+    ):
+        start = datetime.datetime.now()
+        producer_delta = datetime.timedelta(seconds=producer_timeout)
         new = []
         if num <= 0:
             return []
-        print("NUM:", num)
-        while (len(new) < num) and self.procs_alive(procs=procs):
+        while (len(new) < num) and (alive := self.procs_alive(procs=procs)) and ((now := datetime.datetime.now()) <= (start+producer_delta)):
+            #print("hello", self.m_stdout.empty(), alive, num-len(new))
             data = found_call(self._collect_queue(
                                         queue=self.m_stdout,
                                         procs=procs,
-                                        num=1,
-                                        timeout=timeout))
-            #for x in data:
-            #    print("NEW : ", str(x))
+                                        num=num-len(new))
+                    )
             new += data
-            #print("DATA found so far: ", len(new))
+            if self.m_stdout.empty() and any(alive := self.procs_alive(procs=procs)):
+                #print(f"{self.m_name}[ WARN ]: QUEUE EMPTY. WAITING.")
+                #print(f"ALIVE: {alive}")
+                #print(f"PROCS ALIVE: ", len(alive), alive)
+                time.sleep(0.1)
 
-
+        if len(new) < num:
+            return None
         return new[:num]
         
 
@@ -609,7 +649,7 @@ class WiFi():
             self,
             procs: list[mp.Process] = None,
             num: int = None,
-            timeout: int = 5
+            timeout: int = 1
     ):
 
         return self._collect_queue(
@@ -619,16 +659,41 @@ class WiFi():
             timeout=timeout
         )
     def clear_queue(self) -> bool:
+        """
+            Warning
+            If a process is killed using Process.terminate() or os.kill() while it is trying to use a Queue,
+            then the data in the queue is likely to become corrupted.
+            This may cause any other process to get an exception when it tries to use the queue later on. 
+        """
+        
+        #print("CLEARING QUEUES: ", self.m_stdin, self.m_stderr , self.m_stdout)
         try:
-            if self.m_stdin is not None:
-                self.m_stdin.empty()
-            if self.m_stderr is not None:
-                self.m_stderr.empty()
-            if self.m_stdout is not None:
-                self.m_stdout.empty()
+            for queue in [self.m_stdin,self.m_stderr, self.m_stdout]:
+                if queue is None:
+                    continue
+                if queue.empty():
+                    continue 
+                queue.close()
+
+            #    #print(f"WAITING ON LOCK")
+            #    try:
+            #        while not queue.empty():
+            #            queue.get(block=False)
+            #    except Exception as r:
+            #        pass
+            #    finally:
+            #        pass
+            #        print("CLEAR QUEUE: ", queue, queue.empty())
+            #        print("CLEAR QUEUE: ", queue, queue.empty())
+            #        print("CLEAR QUEUE: ", queues[i], queues[i].empty())
+
+            self.m_stddin = mp.Queue()
+            self.m_stdout = mp.Queue()
+            self.m_stderr = mp.Queue() 
         except Exception as r:
-            print(f"Clear Queue: {r}")
+            print(f"Clear Queue ERROR: {r}")
             return 1
+        #print("CLEARED QUEUES: ", self.m_stdin.empty(), self.m_stderr.empty() , self.m_stdout.empty())
         return 0
 
 
@@ -642,16 +707,19 @@ class WiFi():
             self.m_procs = [x for x in self.m_procs if x.is_alive()]
             return self.m_procs
         else:
-            return [x for x in procs if x.is_alive()]
+            X = [x for x in procs if x.is_alive()]
+            return X
 
     def terminate(
             self,
-            procs: list[mp.Process] | None = None
+            procs: list[mp.Process] | None = None,
+            join: bool = True
     ):
         if procs is None:
             procs = self.m_procs
         for x in [x for x in procs if x.is_alive()]:
             x.terminate()
+            if join: x.join()
 
     # will want to save data in parsed form. Here very basic.
     def store(
@@ -688,10 +756,22 @@ class WiFi():
             print(f"{self.m_name}[ STORE ][ ERROR ]: meta_info should be dict, is {type(meta_info)} - {str(meta_info)}.")
             return False
         
+        if not os.path.exists(write_file.parents[0]):
+            os.makedirs(write_file.parents[0], mode=0o777, exist_ok=True)
+        for dir in write_file.relative_to(pathlib.Path(os.getcwd())).parents:
+            os.chown(dir, uid=1000, gid=1000)
+            os.chmod(dir, mode=0o777)
+
+
+        joblib.dump(data,       ( file1:= pathlib.Path( os.path.join(write_file.parents[0], str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_data") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes)))))
+        joblib.dump(meta_info | {"data_file": str(file1)},  ( file2:= pathlib.Path( os.path.join(write_file.parents[0], str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_meta") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes)))))
         
-        joblib.dump(data,       pathlib.Path( os.path.join(write_file.parents, str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_data") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes))))
-        joblib.dump(meta_info,  pathlib.Path( os.path.join(write_file.parents, str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_meta") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes))))
-        
+        os.chown(file1, uid=1000, gid=1000, )
+        os.chown(file2, uid=1000, gid=1000)
+
+        os.chmod(file1, mode=0o666)
+        os.chmod(file2, mode=0o666)
+
         if reset:
             self.m_data = []
 

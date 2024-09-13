@@ -41,10 +41,10 @@ class TxBf(wifi.WiFi):
 
     def process_VHT_COMPRESSED_BREAMFROMING_REPORT(
             self,
-            packets: list[models.Packet],
-            check=True,
-            bandwidth: list[int] | int = None,
-    ) -> list[list[models.Packet], list, list]:
+            packets: list[models.Packet] | None = None,
+            check: bool = True,
+            bandwidth: list[int] | int | None = None,
+    ) -> list[list[models.Packet], list, list] | None:
 
         """
         The cython function used need uniform sized packets with respect to CBR
@@ -54,6 +54,12 @@ class TxBf(wifi.WiFi):
         @PARAM:     check: False -> exspects packets to be uniform and in posession of `mimo_control` data. if not silent skip.
                     check: True  -> batches uniform packets with respect to CBR size and generates if necessary mimo_control. ( convenient, but slower )
         """
+        if packets is None:
+            packets = self.m_data
+        if not packets:
+            print(f"{self.m_name}[ process_VHT_COMPRESSED_BREAMFROMING_REPORT ][ WARN ] Got no packets to parse! CHECK!")
+            return None
+    
         if isinstance(bandwidth, int):
             bandwidth = [bandwidth]
         if check:
