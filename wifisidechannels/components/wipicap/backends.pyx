@@ -74,6 +74,7 @@ def get_v_matrix(
         timestamp = float(packet.DATA.get(models.TsharkField.FRAME_TIME.value))
         nc: int = mimo_control.get("Nc", 0)
         nr: int = mimo_control.get("Nr", 0)
+        #print(nc, nr)
         #chanwidth: int = mimo_control.get("channel_width", 0)
         #if chanwidth != bw:
         #    continue
@@ -232,32 +233,28 @@ cdef inverse_givens_rotation(int nrx, int ntx, list angles, list angle_types, li
             if last != a_t:
                 d_li = np.eye(nrx, nrx, dtype=complex)
             d_li[a_i[0], a_i[0]] = np.exp(1j * angles[idx])
-            #print("D_i: ", d_li)
+            #print(f"D_{idx}: ", d_li)
         elif a_t == "psi":
             if last != a_t:
                 if first:
                     mat_e = d_li
+                    first = False
                 else:
                     mat_e = mat_e @ d_li
+                #print("RES_TEMP_PHI_TO_PSI: ", mat_e)
             cos_val = np.cos(angles[idx])
             sin_val = np.sin(angles[idx])
             g_li[a_i[1], a_i[1]] = cos_val
             g_li[a_i[1], a_i[0]] = sin_val
             g_li[a_i[0], a_i[1]] = -sin_val
             g_li[a_i[0], a_i[0]] = cos_val
-            #print("G_li:", g_li)
+            #print("G_li:",idx, g_li)
             mat_e = mat_e @ g_li.T 
             #print("RES: ", mat_e)
+
             g_li = np.eye(nrx, nrx, dtype=complex)
         else:
             raise ValueError("inverse_givens_rotation(): invalid angle type")
-        
-        #if d_count == d_patience:
-        #    mat_e = d_li.T @ mat_e
-        #    d_patience += 1
-        #    d_count = 0
-        #    print("RES: ", mat_e)
-        #    d_li = np.eye(nrx, nrx, dtype=complex)
 
     return mat_e @ np.eye(N=nrx, M=ntx, dtype=complex)
 

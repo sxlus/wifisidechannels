@@ -13,14 +13,14 @@ from hardware.motor.motor import Direction
 
 from meassure.meassure import Meassure
 
-
+import os
 
 SPEED = 1000
 NO_DOMAIN = 25
-NUMBER_OF_CHUNKS = 16
+NUMBER_OF_CHUNKS = 8
 TRAIN_DELTA_SECONDS = 0.5
-PHY_DOMAIN = "WILDE_13"
-PASSWORD_FILE = "3_all_passwords.txt"
+PHY_DOMAIN = "WILDE_13_1samples_8posptransient"
+PASSWORD_FILE = "2_all_passwords.txt"
 CWD = os.getcwd()
 DSD = pathlib.Path(os.path.join(CWD, "EXPERIMENT", PHY_DOMAIN))
 PASSWORD_FILE = pathlib.Path(os.path.join(CWD, "PASSWORDS", PASSWORD_FILE))
@@ -28,12 +28,13 @@ READ_FILE = "MU_2x4_mac_sa_00c0cab63c70.pcapng"
 #READ_FILE = "DUMP/AP_to_Phone_default_mac_sa_127c6136fcc2_capture.pcapng"
 
 if __name__ == '__main__':
+    os.system("clear")
     #mp.set_start_method("fork")
     meassure = Meassure(
         kwargs = {
             "interface": "wlp0s20f3",
             "channel": 44,
-            "num": 8,
+            "num": 1,
             "mac_sa": "00c0cab63c70",# "00c0cab63c70",# ALFA "127c6136fcc2",# PI "d83add30620c"
             "mac_da": "80cc9c339049",# NETGEAR, , d83add30620c
             #"read_file": READ_FILE
@@ -80,13 +81,15 @@ if __name__ == '__main__':
             )
             exp.reset()
             exp.m_next_pw_idx = 0
+
             while exp.m_next_pw_idx < len(exp.m_passwords):
+                os.system("clear")
                 exp.create_actions_from_password(
                     motor=motor,
                     meassure=meassure,
                     number_of_chunks=NUMBER_OF_CHUNKS,
                     from_idy=from_idy,
-                    v=True
+                    v=False
                 )
                 print(f"[ EXPERIMENT ][ TODO ][ PW ]: {str(exp.m_current_pw)}")
                 print(f"[ EXPERIMENT ][ STATUS ][ ALL ]: {str((exp.m_next_pw_idx-1)+i*len(exp.m_passwords)) + '/' + str(len(exp.m_passwords)*NO_DOMAIN)}", end=" - ")

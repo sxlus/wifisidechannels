@@ -160,9 +160,9 @@ class WiFi():
         #    self.launch_process(function=self._set_frequency, kwargs=kw, blocking=True)
 
         proc = self.launch_process(function=self._listen, kwargs=kwargs, blocking=False)# True if write_file else False)
-        time.sleep(0.5)
+        #time.sleep(0.5)
         self.procs_alive(procs=[proc])
-        print(f"Procs after listen: {proc} - {self.m_procs}")
+        # print(f"Procs after listen: {proc} - {self.m_procs}")
 
         if write_file:
             kwargs |= {
@@ -330,7 +330,7 @@ class WiFi():
         @PARAM:
             num             : Number of packets to sample
         """
-        print(f"######## TIMEOUT: {timeout}")
+        #print(f"######## TIMEOUT: {timeout}")
         num = x if (x:=kwargs.get("num", None)) is not None else 1
         nkwargs = kwargs.copy()
         nkwargs.pop("num", None)
@@ -346,10 +346,10 @@ class WiFi():
         #channel = nkwargs.pop("channel", None)
         #processor,timeout,nkwargs,proc = self._process_capture(processor=processor,timeout=timeout,kwargs=nkwargs)
         
-        packets = self.search_stdout(procs=[proc], producer_timeout=timeout, num = num, found_call=lambda x: processor[0].handle(x))
+        packets = self.search_stdout(procs=[proc], producer_timeout=timeout, num = num, found_call=lambda x: processor[0].handle(raw=x, v=False))
         self.terminate(procs=[proc])
 
-        print("## PROCS ALIVE: ", self.procs_alive(procs=[proc]))
+        #print("## PROCS ALIVE: ", self.procs_alive(procs=[proc]))
 
         error  = self.collect_stderr(procs=[proc],  timeout=timeout)
         for err in error:
@@ -421,10 +421,10 @@ class WiFi():
             if stdout:
                 for line in proc.stdout:
                     #print(f"EXEC: WAITING ON LOCK")
-                    print(line)
+                    #print(line)
                     stdout.put(line, block=False)
                     #print(f"EXEC: RELEASED LOCK")
-                    print(stdout.empty(), stdout.full())
+                    #print(stdout.empty(), stdout.full())
 
             if stderr:
                 for line in proc.stderr:

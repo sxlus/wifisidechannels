@@ -37,7 +37,7 @@ class Meassure:
         "read_file": None
 }) -> bool:
 
-        print("MEASSURE")
+        #print("MEASSURE")
 
         if kwargs.get("mac_da", None) is None:
             kwargs |= {"mac_da": self.m_mac_da} 
@@ -58,8 +58,8 @@ class Meassure:
         data = self.m_unit.collect_sample(kwargs=kwargs)
         #print("MEASSURE GETS PACS: ")
 
-        for i, pac in enumerate(data):
-            print(str(i) , str(pac))
+        #for i, pac in enumerate(data):
+        #    print(str(i) , str(pac))
     
         return True
 

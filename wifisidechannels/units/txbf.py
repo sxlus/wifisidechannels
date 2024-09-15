@@ -14,14 +14,12 @@ class TxBf(wifi.WiFi):
 
     """
 
-    m_name: str = "[ txbf ]"
-
     def __init__(self, **kwargs):
         super().__init__(
             **(kwargs | 
                 (
                     {
-                            "name": self.m_name if not kwargs.get("name") else kwargs.get("name")
+                            "name": "[ txbf ]" if not kwargs.get("name") else kwargs.get("name")
                     }
                 )
             )

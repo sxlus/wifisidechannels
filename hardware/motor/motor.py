@@ -71,15 +71,15 @@ class Motor:
         try:        
             if isinstance(steps, int):
                 for id in motor_id:
-                    print("* Driving steps:", steps)
+                    #print("* Driving steps:", steps)
                     self.m_driver.move(id, steps, direction.value, fs_only=fs_only)
                     self.m_total_steps = (self.m_total_steps - steps) if (direction == Direction.BWD) else (self.m_total_steps + steps)
-                    print("--- ", self.m_total_steps)
+                    #print("--- ", self.m_total_steps)
                     if delta is not None:
                         time.sleep(delta.total_seconds())
                     else:
                         while self.check_moving(motor_id=id):
-                            time.sleep(0.1)
+                            time.sleep(0.05)
             else:
                 for id in motor_id:
                     self.m_driver.start_rotate(id, direction.value, speed)

@@ -57,7 +57,8 @@ class PacketProcessor():
             self,
             raw: list[str | bytes],
             name: str = "",
-            extract: extractor.Extractor | list[extractor.Extractor] | None = None
+            extract: extractor.Extractor | list[extractor.Extractor] | None = None,
+            v: bool = True
     ) -> list[models.Packet]:
 
         #print("RAW:")
@@ -69,7 +70,7 @@ class PacketProcessor():
         #    print(str(x))
         #return self.extract(todo=todo, extract=extract)
         
-        pac = self.extract(todo=todo, extract=extract)
+        pac = self.extract(todo=todo, extract=extract, v=v)
         self.m_todo = []
         self.m_data = []
         return pac 
@@ -128,7 +129,8 @@ class PacketProcessor():
     def extract(
             self,
             todo: models.Packet | list[models.Packet] | None                   = None,
-            extract: extractor.Extractor | list[extractor.Extractor] | None    = None
+            extract: extractor.Extractor | list[extractor.Extractor] | None    = None,
+            v: bool = True
     ) -> list[models.Packet]:
 
         """Extract num packets from m_todo @ """
@@ -141,7 +143,12 @@ class PacketProcessor():
         #    print("\t" + f"{str(ex)}")
         if todo == []:
             return []
-        for pack in tqdm.tqdm(todo):
+        
+        if v:
+            iterator = tqdm.tqdm(todo)
+        else:
+            iterator = todo
+        for pack in iterator:
             pack.NAME = self.m_name if not pack.NAME else pack.NAME
             pack.DATA = self.join_dict(pack.DATA, self.parse_packet(pack, extract=extract))
             data.append(pack)
