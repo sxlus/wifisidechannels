@@ -766,7 +766,7 @@ class WiFi():
         joblib.dump(data,       ( file1:= pathlib.Path( os.path.join(write_file.parents[0], str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_data") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes)))))
         joblib.dump(meta_info | {"data_file": str(file1)},  ( file2:= pathlib.Path( os.path.join(write_file.parents[0], str(now_str) + ("_" + write_file.stem if str(write_file) != now_str else "") + "_meta") + (".dump" if write_file.suffixes == [] else "".join(write_file.suffixes)))))
         
-        os.chown(file1, uid=1000, gid=1000, )
+        os.chown(file1, uid=1000, gid=1000)
         os.chown(file2, uid=1000, gid=1000)
 
         os.chmod(file1, mode=0o666)

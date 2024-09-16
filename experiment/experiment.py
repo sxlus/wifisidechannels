@@ -288,7 +288,7 @@ class NumericalPasswordSCExperiment(Experiment):
         meassure: Meassure,
         write_file: pathlib.Path | str | None = "test",
         meta_info: dict = {},
-    ) -> bool:
+    ) -> dict | None:
 
         if isinstance(write_file, str):
             write_file = pathlib.Path(write_file)
@@ -296,12 +296,12 @@ class NumericalPasswordSCExperiment(Experiment):
             write_file = pathlib.Path("")
         try:
             meassure.process_and_store(
-                write_file= pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_" + str(self.m_current_pw) + "".join(write_file.suffixes))),
+                write_file = pathlib.Path(os.path.join(write_file.parents[0], write_file.stem + "_" + str(self.m_current_pw) + "".join(write_file.suffixes))),
                 meta_info=meta_info | {
                     "max_steps":        self.m_max_steps,
                     "max_positions":    self.m_max_positions,
                     "password_file":    self.m_password_file,
-                    "current_pw":       self.m_current_pw,
+                    "pw":       self.m_current_pw,
                 }
             )
         except Exception as r:

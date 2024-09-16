@@ -286,7 +286,8 @@ class FastdriverController:
 
     def is_switch_pressed(self, selected_motor):
         status = self.get_status(selected_motor)
-        return (status[0] in [32274, 32278, 32282])  # True means switch is open
+        #print(status)
+        return (status[0] in [32274, 32278, 32282, 32336])  # True means switch is open
 
     def __del__(self):
         self.stop_motors_hard()
