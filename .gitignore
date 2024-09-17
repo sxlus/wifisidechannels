@@ -21,3 +21,4 @@ test.ipynb
 pictures/*/*.dat
 TEST_BFI/
 EXPERIMENT/*
+EXPERIMENT_DATA/*
