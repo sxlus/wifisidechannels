@@ -97,7 +97,7 @@ class Meassure:
         proc = self.launch_process(
             function=self._process_and_store,
             kwargs = {
-                "write_file": write_file,
+                "write_file": str(write_file),
                 "meta_info":  meta_info
             },
             blocking = False
