@@ -51,10 +51,10 @@ options:
 
 It is important to use `pipx` when installing `poetry` to match the intended version of that project.
 
-1) Install `pipx` to install python `poetry` and install `tshark`, `iw` to capture packets and alternate the state if interfaces and `python3-dev` to compile wipi
+1) Install `pipx` to install python `poetry` and install `tshark`, `iw` to capture packets and alternate the state if interfaces and `python3-dev` & `build-essential` to compile wipi
 
     ```bash
-    sudo apt install pipx tshark python3-dev iw && pipx install poetry && pipx ensurepath
+    sudo apt install pipx tshark python3-dev iw build-essential && pipx install poetry && pipx ensurepath
     ```
 
 2) Open a new terminal
