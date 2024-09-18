@@ -20,7 +20,8 @@ bash/interact_STA.sh
 test.ipynb
 pictures/*/*.dat
 TEST_BFI/
-EXPERIMENT/*
-EXPERIMENT_DATA/*
+EXPERIMENT*/*
 EXPERIMENT.zip
 *dump
+DATASETS*/*
+
