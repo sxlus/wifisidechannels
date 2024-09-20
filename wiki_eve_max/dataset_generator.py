@@ -104,7 +104,8 @@ class BFIPWDatasetGenerator():
             states_per_transient:   int | None = None,
             func_on_state:          typing.Callable = lambda x: x[np.random.randint(0, len(x))],
             sample_spacing_random:  bool = True,
-            v:                      bool = False
+            v:                      bool = False,
+            vv:                     bool = False
     ) -> dict[int, dict]:
 
         dataset_meta = {}
@@ -134,29 +135,29 @@ class BFIPWDatasetGenerator():
 
         num_states              = meta.get("max_positions", 10)
         num_samples_per_state   = meta.get("samples_per_state", 1)
-        domain                  = meta.get("domain", 0)
-
-        out_dir = pathlib.Path(os.path.join(out_dir, f"ROOM_{str(meta.get("phy_domain", 0))}", str(domain)))
-
+        train_domain            = meta.get("train_domain", 0)
+        room_domain             = meta.get("phy_domain", 0)
+        out_dir = pathlib.Path(os.path.join(out_dir, f"ROOM_{room_domain}", str(room_domain)+str(train_domain)))
+        phy_domain              = str(room_domain)+str(train_domain)
 
         for target in range(num_states):
             for prefix in range(num_states):
                 for suffix in range(num_states):
 
-                    holistic_domain = f"{str(domain)}{str(prefix)}{str(suffix)}"
+                    holistic_domain = f"{str(phy_domain)}{str(prefix)}{str(suffix)}"
                     if holistic_domain not in dataset_meta.keys():
                         dataset_meta[holistic_domain] = {}
 
                     pw = f"{str(prefix)}{str(target)}{str(suffix)}"
 
-                    prefix_start    = (prefix*number_of_chunks)# + (1 if prefix > 0 else 0)
-                    prefix_end      = prefix_start + 1
+                    prefix_start    = (prefix*number_of_chunks)
+                    prefix_end      = prefix_start
 
-                    target_start    = (target*number_of_chunks)# + (1 if target > 0 else 0)
-                    target_end      = target_start + 1
+                    target_start    = (target*number_of_chunks)
+                    target_end      = target_start
 
-                    suffix_start    = (suffix*number_of_chunks)# + (1 if suffix > 0 else 0)
-                    suffix_end      = suffix_start + 1
+                    suffix_start    = (suffix*number_of_chunks)
+                    suffix_end      = suffix_start
 
                     if prefix < target:
                         pt_start    = prefix_end
@@ -178,26 +179,46 @@ class BFIPWDatasetGenerator():
                         ts_start    = target_start
                         ts_end      = target_end
 
-                    prefix_sample  = [ func_on_state(data[prefix_start*num_samples_per_state:prefix_end*num_samples_per_state]) ]
-                    target_sample  = [ func_on_state(data[target_start*num_samples_per_state:target_end*num_samples_per_state]) ]
-                    suffix_sample  = [ func_on_state(data[suffix_start*num_samples_per_state:suffix_end*num_samples_per_state]) ]
+                    prefix_sample  = [ func_on_state(data[prefix_start*num_samples_per_state:(prefix_end + 1)*num_samples_per_state]) ]
+                    target_sample  = [ func_on_state(data[target_start*num_samples_per_state:(target_end + 1)*num_samples_per_state]) ]
+                    suffix_sample  = [ func_on_state(data[suffix_start*num_samples_per_state:(suffix_end + 1)*num_samples_per_state]) ]
 
-                    if v: print(prefix, prefix_start, prefix_end)
-                    if v: print(target, target_start, target_end)
-                    if v: print(suffix, suffix_start, suffix_end)
+                    if vv: print(pw)
+                    if v: print("prefix", prefix, prefix_start, prefix_end)
+                    if v: print("target", target, target_start, target_end)
+                    if v: print("suffix", suffix, suffix_start, suffix_end)
 
                     if sample_spacing_random:
-                        pt_idx = sorted([np.random.randint(pt_start, pt_end) for _ in range(states_per_transient)], reverse=True if target < prefix else False)
-                        ts_idx = sorted([np.random.randint(ts_start, ts_end) for _ in range(states_per_transient)], reverse=True if suffix < target else False)
+                        pt_idx = sorted([np.random.randint(pt_start, pt_end+1) for _ in range(states_per_transient)], reverse=True if target < prefix else False)
+                        ts_idx = sorted([np.random.randint(ts_start, ts_end+1) for _ in range(states_per_transient)], reverse=True if suffix < target else False)
                     else:
-                        pt_idx = [ x for x in range(pt_start, pt_end, (pt_end-pt_start)//states_per_transient+1) ]
-                        ts_idx = [ x for x in range(ts_start, ts_end, (ts_end-ts_start)//states_per_transient+1) ]
-    
-                    if v: print(len(pt_idx), pt_idx)
-                    if v: print(len(ts_idx), ts_idx)
+                        pt_idx = []
+                        pt_delta = (pt_end - pt_start)
+                        d = pt_delta / states_per_transient
+                        sum_d = d
+                        for _ in range(states_per_transient):
+                            pt_idx.append(pt_start + round(sum_d))
+                            sum_d += d
+                        if prefix > target:
+                            pt_idx = sorted(pt_idx, reverse=True)
+                        ts_idx = []
+                        ts_delta = (ts_end - ts_start)
+                        d = ts_delta / states_per_transient
+                        sum_d = d
+                        for _ in range(states_per_transient):
+                            ts_idx.append(ts_start + round(sum_d))
+                            sum_d += d
+                        if target > suffix:
+                            ts_idx = sorted(ts_idx, reverse=True)
+
+                    if vv: print(len(pt_idx), pt_idx)
+                    if vv: print(len(ts_idx), ts_idx)
 
                     pt_sample = [ func_on_state(data[i*num_samples_per_state:(i+1)*num_samples_per_state]) for i in pt_idx ]
                     ts_sample = [ func_on_state(data[i*num_samples_per_state:(i+1)*num_samples_per_state]) for i in ts_idx ]
+
+                    if vv: print(len(pt_sample), pt_sample)
+                    if vv: print(len(ts_sample), ts_sample)
 
                     sample = np.array( prefix_sample + pt_sample + target_sample + ts_sample + suffix_sample )
                     file_out = os.path.join(out_dir, pw + ".dump")
@@ -227,7 +248,8 @@ class BFIPWDatasetGenerator():
             states_per_transient:   int | None = None,
             func_on_state:          typing.Callable = lambda x: x[np.random.randint(0, len(x))],
             sample_spacing_random:  bool = True,
-            v:                      bool = False
+            v:                      bool = False,
+            vv:                     bool = False
     ) -> dict[int, dict]:
         
         if meta is None:
@@ -262,6 +284,6 @@ class BFIPWDatasetGenerator():
                 func_on_state=func_on_state,
                 sample_spacing_random=sample_spacing_random,
                 v=v,
+                vv=vv
             )
-            break
         joblib.dump(dataset_meta, os.path.join(out_dir, dataset_meta_file))

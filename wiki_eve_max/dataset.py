@@ -211,100 +211,49 @@ class BFIDomainAdaptDataset(BFIDataSet):
 
 class BFIKEYSTROKE(torch.utils.data.Dataset):
 
-    m_log_file:     pathlib.Path | None
-    m_log:          dict = {}
-
-    m_access:      dict = {
-        "domain"    : "domain",
-        "class"     : "class",
-        "data_file" : "data_file"
-    }
-
-    m_transform:    typing.Callable | None
-
-    """
-        LOG SHOULD HAVE THE FOLLOWING STRUCTURE:
-        {
-            "DATA":{
-                "DOMAIN": {
-                    "SAMPLE": [
-                        {
-                            "META_FILE": "XXX",
-                            "DATA_FILE": "YYY"
-                        }
-                    ]
-                }
-            }
-        }
-    """
+    m_meta_file : pathlib.Path
+    m_meta      : dict
+    m_len       : int
+    m_no_domain : int
+    m_num_class : int
+    m_domains   : list
+    m_transform : typing.Callable | None
 
     def __init__(
             self,
-            log_file :      str | pathlib.Path | None = None,
-            log:            dict = None,
-            folders:        str | pathlib.Path  | typing.Iterable[str | pathlib.Path] | None = None,
-            meta_sub:       str = "meta",
-            transform:      typing.Callable | None = None,
-            access:         dict | None = None,
-            SAVE_LOG:       str = "LOG_EXPERIMENT.dump"
+            meta_file: str | pathlib.Path,
+            transform: typing.Callable | None = None
     ):
-        if log_file is None and log is None and folders is None:
-            print(f"[ BFIKEYSTROKE ][ ERROR ] Nedd either folders or log or log_file.")
-            return None
-
-        self.m_transform = transform
-
-        if isinstance(log, dict):
-            self.m_log = log
+        self.m_meta_file    = meta_file if isinstance(meta_file, pathlib.Path) else pathlib.Path(meta_file)
+        self.m_meta         = self.read(meta_file)
+        if not self.m_meta:
+            print(f"[ BFIKEYSTROKE ][ ERROR ] Cant load dataset.")
             return
-        
-        if isinstance(log_file, str) or isinstance(log_file, pathlib.Path):
-            new = joblib.load(log_file)
-            if isinstance(new, dict):
-                self.m_log = new
-            else:
-                print(f"[ BFIKEYSTROKE ][ ERROR ]Logfile content is no dict.")
-            return
-         
-        if folders is not None:
-            if not isinstance(folders, typing.Iterable):
-                folders = [ folders ]
-            for folder in folders:
-                self.m_log  = self.build_log(
-                    folder  = folder,
-                    log     = self.m_log,
-                    sub     = meta_sub,
-                    access  = access if isinstance(access, dict) else self.m_access 
-                )
-                
-            joblib.dump(self.m_log, SAVE_LOG)
-        
+        targets_per_domain  = [len(list(self.m_meta[key].keys())) for key in self.m_meta.keys() if "meta" not in str(key).lower() ]
+        self.m_domains      = sorted([ x for x in self.m_meta.keys() if "meta" not in str(x).lower()])
+        self.m_no_domain    = len(list(self.m_meta.keys()))
+        self.m_len          = sum(targets_per_domain)
+        self.m_num_class    = max(targets_per_domain)
+        self.m_transform    = transform
 
-    def __len__(self) -> int:
-        return len(self.bfi)
+    def __len__(self):
+        return sum([len(self.m_meta[key].keys()) for key in self.m_meta.keys()])
 
     def __getitem__(self, idx: int) -> dict:
+        domain_index    = idx//self.m_num_class
+        domain      = self.m_domains[domain_index]
+        target          = idx % self.m_num_class
+        data            = self.read(file=self.m_meta[domain][target]["data_file"])
+        VAL = self.transform([self.bfi[idx]]) if self.transform is not None else np.array([self.bfi[idx]])
 
-        #if not isinstance(idx, int):
-        #    print("Need int idx.")
-        #    return None 
-        #if torch.is_tensor(idx):
-        #    idx = idx.tolist()
-#
-        #if isinstance(idx, typing.Iterable):
-        #    VAL = self.transform(self.bfi[idx]) if self.transform is not None else np.array(self.bfi[idx])
-        #else:
-        #    VAL = self.transform([self.bfi[idx]]) if self.transform is not None else np.array([self.bfi[idx]])
-#
-        #sample = {
-        #    "data": VAL,
-        #    #"time": self.time[idx], # currently broken
-        #    "label": self.targ_label[idx],
-        #    "domain": self.targ_domain[idx]
-        #    }
-#
-        #print(sample["data"].shape)
-        return# sample
+        sample = {
+            "data": VAL,
+            #"time": self.time[idx], # currently broken
+            "label": self.targ_label[idx],
+            "domain": self.targ_domain[idx]
+            }
+
+        return sample
 
     def __str__(self):
         return f"[ BFIDataSet ]: {str(self.bfi_file)}\n\t" \
@@ -312,64 +261,16 @@ class BFIKEYSTROKE(torch.utils.data.Dataset):
             f"* LABEL       : {self.targ_label}\n\t" \
             f"* DOMAIN      : {self.targ_domain}"
 
-    def build_log(
-            self,
-            folder = pathlib.Path | str,
-            log: dict | None = None,
-            sub: str = "meta",
-            access: dict | None = None
-            ):
-
-        if access is None:
-            access = self.m_access
-        if log is None:
-            log = { }
-        if log.get("DATA", None) is None:
-            log["DATA"] = {}
-        for meta_file in sorted([ os.path.join(folder, x) for x in os.listdir(folder) if sub in x] if sub is not None else os.listdir(folder)):
-            #print(meta_file)
-            meta = self.read(file=meta_file)[0]
-            #print(meta)
-            if (domain:= meta.get(access["domain"], None)) is None:
-                continue
-
-            if (target:= meta.get(access["class"], None)) is None:
-                continue
-            target = int(str(target[1]), 10)
-            if (data_file:= meta.get(access["data_file"], None)) is None:
-                continue
-    
-            if log["DATA"].get(domain, None) is None:
-                log["DATA"][domain] = {}
-            
-            if log["DATA"][domain].get(target, None) is None:
-                log["DATA"][domain][target] = []
-
-            log["DATA"][domain][target].append({
-                "meta_file": str(meta_file),
-                "data_file": str(data_file)
-            })
-        return log
-
     def read(
             self,
-            file: pathlib.Path | None = None,
-            folder: pathlib.Path | None = None,
-            sub: str | None = None,
-            num: int | None = None
-    ) -> dict[int, typing.Any]:
+            file: pathlib.Path | None = None
+    ) -> typing.Iterable[typing.Any]:
 
-        if file is None and folder is None:
-            return None
+        if file is None:
+            return []
         
         if file is not None:
-            return { 0: joblib.load(file) }
-
-
-        data = {}
-        for i, file in enumerate(sorted([ x for x in os.listdir(folder) if sub in str(x)] if sub is not None else os.listdir(folder))):
-            if i == num:
-                break
-            data[i] = joblib.load(file)
-
-        return data
+            if os.path.exists(file):
+                return joblib.load(file)
+            else:
+                return []

@@ -114,7 +114,7 @@ if __name__ == '__main__':
                     meassure=meassure,
                     meta_info={
 
-                        "domain": PHY_DOMAIN_NUMBER*NO_DOMAIN+TRAIN_DOMAIN,
+                        #"domain": PHY_DOMAIN_NUMBER*NO_DOMAIN+TRAIN_DOMAIN,
                         #"class": int(str(exp.m_current_pw)[1], 10),
 
                         "phy_domain": PHY_DOMAIN_NUMBER,

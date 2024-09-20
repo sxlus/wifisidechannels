@@ -98,7 +98,8 @@ class TxBf(wifi.WiFi):
 
     def plot_feedback_hist(
             self,
-            packets: models.Packet,
+            packets: models.Packet | None = None,
+            bfi_data: np.ndarray | None = None,
             dpi: int = 200,
             size: tuple = (20,10),
             plot: bool = True,
@@ -109,18 +110,29 @@ class TxBf(wifi.WiFi):
             v: bool=False
     ) -> None:
 
+        if bfi_data is None and packets is None:
+            print(f"{self.m_name}[ plot_feedback_hist ][ ERROR ] Need data or packets")
+            return
+        if packets is not None:
+            input_data = packets
+        else:
+            input_data = bfi_data
+
         if isinstance(bandwidth, int):
             bandwidth = [bandwidth]
 
         data = {}
-        for w, packet in enumerate(packets):
-            V       = packet.DATA.get(models.ExtractorField.VHT_STEERING_MATRIX.value, None)
-            if V is None:
-                continue
-            if bandwidth:
-                bw = packet.DATA.get(models.ExtractorField.VHT_MIMO_CONTROL.value, {}).get("channel_width","")
-                if bw not in bandwidth:
+        for w, packet in enumerate(input_data):
+            if packets is not None:
+                V       = packet.DATA.get(models.ExtractorField.VHT_STEERING_MATRIX.value, None)
+                if V is None:
                     continue
+                if bandwidth:
+                    bw = packet.DATA.get(models.ExtractorField.VHT_MIMO_CONTROL.value, {}).get("channel_width","")
+                    if bw not in bandwidth:
+                        continue
+            else:
+                V       = packet
 
             if v: print(f"P_{w}.shape: {V.shape}")
 
