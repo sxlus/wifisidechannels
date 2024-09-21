@@ -24,7 +24,7 @@ X = BFIPWDatasetGenerator(
     folder_out="DATASET_TEST"
 )
 
-N_SAMPLES       = 64
+N_SAMPLES       = 32
 RANDOM_SPACING  = False
 RANDOM_S        = False
 PACKET          = False

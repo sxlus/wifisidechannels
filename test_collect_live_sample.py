@@ -2,7 +2,6 @@ import wifisidechannels.units.txbf as txbf
 
 import argparse
 
-
 parser = argparse.ArgumentParser(
                     prog='wifisidechannels.py')
 

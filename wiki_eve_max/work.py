@@ -23,6 +23,10 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size, datakind = "bf
             #y_label = torch.nn.functional.one_hot(y_label.long(), num_classes=10).type(torch.float)
             #y_domain = torch.nn.functional.one_hot(y_domain.long(), num_classes=10).type(torch.float)
 
+        #print(len(X), X[:22])
+        #print(len(y_label), y_label[:22])
+        #print(len(y_domain), y_domain[:22])
+        #print(device)
         if device is not None:
             X, y_label, y_domain = X.to(torch.device(device=device)), y_label.to(torch.device(device=device)), y_domain.to(torch.device(device=device))
 

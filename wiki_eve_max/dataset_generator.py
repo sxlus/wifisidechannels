@@ -42,21 +42,23 @@ class BFIPWDatasetGenerator():
     ) -> typing.Iterable[typing.Any]:
         
         data_file = meta.get("data_file", None)
-
         data = self.read(
             file=data_file
-        )[0]
+        )
         if not data:
-            print(f"[ BFIPWDatasetGenerator ][ WARN ] Datafile {data_file} could not be found. Searching for it where Metafile {meta_file} was.")
+            print(f"[ BFIPWDatasetGenerator ][ WARN ] Datafile {data_file} could not be found. Searching for it where Metafile was.")
             meta_file = meta.get("meta_file", None)
             if meta_file is None:
                 print(f"[ BFIPWDatasetGenerator ][ ERROR ] Cant find Datafile for Metafile {meta_file}.")
                 return []
             data = self.read(
                 file=str(meta_file).replace("meta", "data")
-            )[0]
+            )
 
-        return data
+        if data:
+            return data[0]
+        else:
+            return []
 
     def read(
             self,
