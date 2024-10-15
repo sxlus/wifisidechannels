@@ -1,5 +1,7 @@
 # 802.11 Sidechannel implementations
 
+## Done @ MPI-SP in Bochum, Germany 
+
 ## Usage of the app so far
 
 ```bash
