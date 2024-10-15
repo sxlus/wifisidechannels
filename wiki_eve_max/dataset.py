@@ -253,20 +253,22 @@ class BFIKEYSTROKE(torch.utils.data.Dataset):
         target          = idx % self.m_num_class
         #print(type(self.m_meta[domain]), self.m_meta[domain])
         data            = np.squeeze(self.read(file=self.m_meta[domain][target][0]["data_file"]))
-        data            = data.reshape((data.shape[0], -1))
+        data            = data.reshape((-1, data.shape[0]))
+        #print(data.shape)
         #print(f"DINDEX: {domain_index},{type(domain_index)}\nDOMAIN: {domain},{type(domain)}\nTARGET: {target},{type(target)}")
         # get second sample, with same target, but from different domain
         domain_index_0  = (domain_index + np.random.randint(1,self.m_num_domain)) % self.m_num_domain
         domain_0        = self.m_domains[domain_index_0]
         data_0          = np.squeeze(self.read(file=self.m_meta[domain_0][target][0]["data_file"]))
-        data_0          = data_0.reshape((data.shape[0], -1))
+        data_0          = data_0.reshape((-1, data_0.shape[0]))
+        #print(data_0.shape)
         #print(f"DINDEX0: {domain_index_0},{type(domain_index_0)}\nDOMAIN0: {domain_0},{type(domain_0)}")
         #print(type(data), len(data), data)
         #print(type(data_0), len(data_0), data_0)
         #print(len(data + data_0), data + data_0)
-        VAL = self.m_transform(np.concatenate((data, data_0))) if self.m_transform is not None else np.array(np.concatenate((data, data_0)))
+        VAL = self.m_transform(np.concatenate((data, data_0), axis=1)) if self.m_transform is not None else np.array(np.concatenate((data, data_0), axis=1))
 
-        #print(len(VAL), VAL)
+        #print(VAL.shape, len(VAL), VAL)
 
         sample = {
             "data": VAL,

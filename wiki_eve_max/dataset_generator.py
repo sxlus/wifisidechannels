@@ -10,26 +10,27 @@ class BFIPWDatasetGenerator():
     m_folder_out:   pathlib.Path
     m_meta:         dict[int, dict]  = {}
 
-    def __init__(self, folder_in: str | pathlib.Path, folder_out: str | pathlib.Path = "DATASETS"):
+    def __init__(self, folder_in: str | pathlib.Path | typing.Iterable, folder_out: str | pathlib.Path = "DATASETS", foldersub: str = "", metasub: str = "meta"):
 
         self.m_folder_in = folder_in if (( folder_in := pathlib.Path(folder_in) ) and folder_in.is_absolute()) else \
                             pathlib.Path(os.getcwd(), folder_in) 
         self.m_folder_out = folder_out if ( folder_out := pathlib.Path(folder_out) ) and folder_out.is_absolute() else \
                             pathlib.Path(os.getcwd(), folder_out) 
 
-        self.m_meta = self.read_meta(folder=self.m_folder_in)
+        self.m_meta = self.read_meta(folder=self.m_folder_in, sub=metasub, fub=foldersub)
 
     def read_meta(
             self,
             folder: pathlib.Path | None = None,
-            sub: str = "meta"
+            sub: str = "meta",
+            fub: str = "",
     ) -> dict[int, dict]:
 
         if folder is None:
             folder = self.m_folder_in
         if not folder:
             return {}
-        data = self.read(folder=folder, sub=sub)
+        data = self.read(folder=folder, sub=sub, fub=fub)
         meta = {}
         for x in data:
             meta[x["domain"]] = x 
@@ -65,6 +66,7 @@ class BFIPWDatasetGenerator():
             file: pathlib.Path | None = None,
             folder: pathlib.Path | None = None,
             sub: str = "",
+            fub: str = "",
             num: int | None = None
     ) -> typing.Iterable[typing.Any]:
 
@@ -78,7 +80,7 @@ class BFIPWDatasetGenerator():
                 return []
 
         data = []
-        for file in sorted([os.path.join(x, file ) for x,_,y in os.walk(folder) for file in y if sub in file]):
+        for file in sorted([os.path.join(x, file) for x,_,y in os.walk(folder) if fub in str(x) for file in y if sub in file]):
             print(file)
             data += self.read(file=file)
             data[-1] |= {"meta_file": file}
@@ -100,8 +102,8 @@ class BFIPWDatasetGenerator():
 
     def create_embedded_keystroke_samples(
             self,
-            data,
             meta,
+            data=None,
             out_dir:                pathlib.Path | str | None = None,
             states_per_transient:   int | None = None,
             func_on_state:          typing.Callable = lambda x: x[np.random.randint(0, len(x))],
@@ -111,6 +113,7 @@ class BFIPWDatasetGenerator():
     ) -> dict[int, dict]:
 
         dataset_meta = {}
+
 
         print("META: ", meta.get("meta_file", "NONE"))
         if out_dir is None:
@@ -132,7 +135,6 @@ class BFIPWDatasetGenerator():
             states_per_transient = meta.get("number_of_chunks", None)
 
         num_prefix_samples      = meta.get("num_prefix_samples", 0)
-        data = data[num_prefix_samples:]
 
 
         num_states              = meta.get("max_positions", 10)
@@ -151,6 +153,34 @@ class BFIPWDatasetGenerator():
                         dataset_meta[holistic_domain] = {}
 
                     pw = f"{str(prefix)}{str(target)}{str(suffix)}"
+                    file_out = os.path.join(out_dir, pw + ".dump")
+                    new_meta = {
+                                "data_file" : str(file_out),
+                                "pw"        : pw,
+                                "target"    : target
+                            }
+
+                    if target not in dataset_meta[holistic_domain].keys():
+                        dataset_meta[holistic_domain][target] = [
+                            new_meta
+                        ]
+                    else:
+                        dataset_meta[holistic_domain][target].append(new_meta)
+
+                    if os.path.exists(file_out):
+                        continue
+
+                    if data is None:
+                        if meta is None:
+                            print(f"Need either data or data_file.")
+                            return {}
+                        data = self.read_data(
+                            meta=meta
+                        )
+                        if not data:
+                            return {}
+                        data = data[num_prefix_samples:]
+
 
                     prefix_start    = (prefix*number_of_chunks)
                     prefix_end      = prefix_start
@@ -223,22 +253,10 @@ class BFIPWDatasetGenerator():
                     if vv: print(len(ts_sample), ts_sample)
 
                     sample = np.array( prefix_sample + pt_sample + target_sample + ts_sample + suffix_sample )
-                    file_out = os.path.join(out_dir, pw + ".dump")
 
-                    new_meta = {
-                                "data_file" : str(file_out),
-                                "pw"        : pw,
-                                "target"    : target
-                            }
 
                     self.write(sample, file_out)
 
-                    if target not in dataset_meta[holistic_domain].keys():
-                        dataset_meta[holistic_domain][target] = [
-                            new_meta
-                        ]
-                    else:
-                        dataset_meta[holistic_domain][target].append(new_meta)
 
         return dataset_meta
 
@@ -271,15 +289,11 @@ class BFIPWDatasetGenerator():
             }
         }
 
+
         for phy_domain in meta.keys():
-            data = self.read_data(
-                meta=meta[phy_domain]
-            )
             print(meta[phy_domain])
-            if not data:
-                continue
+
             dataset_meta |= self.create_embedded_keystroke_samples(
-                data=data,
                 meta=meta[phy_domain],
                 out_dir=out_dir,
                 states_per_transient=states_per_transient,
@@ -288,4 +302,4 @@ class BFIPWDatasetGenerator():
                 v=v,
                 vv=vv
             )
-        joblib.dump(dataset_meta, os.path.join(out_dir, dataset_meta_file))
+        joblib.dump(dataset_meta, os.path.join(out_dir, ("meta" if not "meta" in str(dataset_meta_file) else "") + str(dataset_meta_file)))

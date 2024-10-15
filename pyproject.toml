@@ -17,10 +17,15 @@ pyqt6 = "^6.7.0"
 pyshark = "^0.6"
 paramiko = "^3.4.1"
 pyserialtransfer = "^2.6.9"
+numpy = "<2"
 torch = "^2.4.1"
 torchvision = "^0.19.1"
 torchaudio = "^2.4.1"
-numpy = "<2"
+
+[[tool.poetry.source]]
+name = "pytorch-gpu-src"
+url = "https://download.pytorch.org/whl/cu12"
+priority = "explicit"
 
 [tool.poetry.dev-dependencies]
 
